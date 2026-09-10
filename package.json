@@ -1,0 +1,21 @@
+{
+  "name": "mab-dental-system",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently -n WEB,ADMIN -c blue,yellow \"npm run dev:web\" \"npm run dev:admin\"",
+    "dev:web": "npm --workspace apps/website run dev",
+    "dev:admin": "npm --workspace apps/admin run dev",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "concurrently": "9.2.1",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@mab/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@mab/shared": "1.0.0",
+    "@supabase/supabase-js": "2.116.0"
+  }
+}

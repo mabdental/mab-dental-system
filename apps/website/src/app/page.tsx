@@ -1,0 +1,21 @@
+import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowRight, CalendarDays, Heart, MapPin, MessageCircle, ShieldCheck, Sparkles, UsersRound } from 'lucide-react'
+import { BRANCHES, BUSINESS, SERVICES, SOCIAL_LINKS } from '@mab/shared'
+import { BranchCard, CtaBand, ServiceCard, StatStrip } from '@/components/site'
+
+export default function HomePage() {
+  return <main>
+    <section className="home-hero">
+      <div className="container home-hero-grid">
+        <div className="home-hero-copy"><p className="eyebrow">HEALTHY SMILES. BRIGHTER TOMORROWS.</p><h1>Dental care, thoughtfully done.</h1><p className="hero-description">Modern, comprehensive dental care for you and your family. From preventive care to advanced treatments, we’re here to help you smile with confidence.</p><div className="hero-actions"><Link href="/book" className="button button-primary"><CalendarDays size={17} /> Book Appointment <ArrowRight size={16} /></Link><a href={SOCIAL_LINKS.messenger} target="_blank" rel="noopener noreferrer" className="button button-outline"><MessageCircle size={17} /> Message Us</a></div><StatStrip items={[{ icon: 'location', title: 'Two branches', detail: 'Conveniently near you' }, { icon: 'people', title: 'Free consultation', detail: 'Talk to our team' }, { icon: 'heart', title: 'Patient-centered', detail: 'Care with intention' }]} /></div>
+        <div className="home-hero-image"><Image src="/images/clinic-chair.jpg" alt="M.A.B. Dental Clinic treatment room" fill priority sizes="(max-width: 800px) 100vw, 54vw" /></div>
+      </div>
+    </section>
+    <section className="section section-tight"><div className="container"><div className="section-heading-row"><div><p className="eyebrow">OUR SERVICES</p><h2>Comprehensive care for every smile.</h2></div><Link href="/services" className="text-link">View all services <ArrowRight size={16} /></Link></div><div className="service-preview-grid">{SERVICES.slice(0, 6).map((service) => <ServiceCard key={service.id} service={service} />)}</div></div></section>
+    <section className="split-feature split-feature-ivory"><div className="split-feature-image"><Image src="/images/clinic-signage.jpg" alt="M.A.B. Dental Clinic wooden identity wall" fill sizes="(max-width: 800px) 100vw, 50vw" /></div><div className="split-feature-copy"><p className="eyebrow">OUR CLINIC</p><h2>More than treatment. A better dental experience.</h2><p>At {BUSINESS.name}, we combine modern dentistry with a personal touch. Our team, facilities, and patient-centered approach are designed around comfort and clear next steps.</p><Link href="/our-clinic" className="button button-primary">Get to know our clinic <ArrowRight size={16} /></Link><div className="mini-values"><span><UsersRound size={18} /> Experienced team</span><span><ShieldCheck size={18} /> Modern & safe facilities</span><span><Heart size={18} /> Patient-centered care</span></div></div></section>
+    <section className="section"><div className="container"><div className="section-heading-row"><div><p className="eyebrow">OUR LOCATIONS</p><h2>Two locations, one standard of care.</h2></div><span className="section-aside">Same thoughtful care, closer to you.</span></div><div className="branch-grid">{BRANCHES.map((branch) => <BranchCard compact key={branch.id} branch={branch} />)}</div></div></section>
+    <section className="section trust-section"><div className="container trust-grid"><div><p className="eyebrow">A CALMER WAY TO VISIT</p><h2>Start with what you need.</h2><p>Explore services, compare locations, or send a preferred schedule. The clinic team will review your request and confirm availability.</p></div><div className="trust-list"><span><Sparkles size={20} /> Free Consultation and Assessment</span><span><MapPin size={20} /> Two Parañaque locations</span><span><ShieldCheck size={20} /> Appointment request, then confirmation</span></div></div></section>
+    <CtaBand />
+  </main>
+}

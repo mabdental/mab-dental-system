@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.local
+.env.*.local
+!.env.example
+data/*.json
+apps/*/data/*.json
+*.tsbuildinfo
+.DS_Store
+AGENTS.md
+CLAUDE.md
