@@ -99,26 +99,40 @@ The migration creates operational tables, enums, indexes, helper authorization f
 
 Required environment variables are listed in .env.example. Never commit .env files, service-role keys, bootstrap passwords, database passwords, or patient data.
 
-## Vercel deployment
+## Netlify deployment
 
-Deploy the two apps as separate Vercel projects from the same GitHub repository, mabdental/mab-dental-system:
+Deploy the two apps as separate public Netlify projects from the same public GitHub repository, `mabdental/mab-dental-system`.
+
+The live projects are:
+
+- Public clinic site: https://mabdentalclinic.netlify.app
+- Admin workspace: https://mabclinicadmin.netlify.app
+
+Both projects use the repository root as their base directory. Netlify detects the
+workspace and runs the app-specific build command below:
 
 ### Public project
 
-- Root directory: apps/website
+- Project name: `mabdentalclinic`
+- Base directory: repository root
 - Framework: Next.js
-- Build command: npm run build --workspace @mab/website
-- Install command: npm install
+- Build command: `npm --workspace @mab/website run build`
+- Publish directory: `apps/website/.next`
 
 ### Admin project
 
-- Root directory: apps/admin
+- Project name: `mabclinicadmin`
+- Base directory: repository root
 - Framework: Next.js
-- Build command: npm run build --workspace @mab/admin
-- Install command: npm install
+- Build command: `npm --workspace @mab/admin run build`
+- Publish directory: `apps/admin/.next`
 - Keep the admin deployment noindex/nofollow.
 
-Set the shared Supabase and public-link variables in the appropriate Vercel project environments. Keep SUPABASE_SERVICE_ROLE_KEY, MAB_BOOTSTRAP_ADMIN_PASSWORD, and MAB_SESSION_SECRET server-only. Do not deploy local demo authentication or the file-backed store as a production data source.
+Set the shared Supabase and public-link variables in each Netlify project's
+production environment. Keep `SUPABASE_SERVICE_ROLE_KEY`,
+`MAB_BOOTSTRAP_ADMIN_PASSWORD`, and `MAB_SESSION_SECRET` server-only. Do not
+deploy local demo authentication or the file-backed store as a production data
+source.
 
 ## Testing
 
