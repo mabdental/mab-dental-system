@@ -59,6 +59,11 @@ function dataFile() {
     const isAbsolute = /^[A-Za-z]:[\\/]/.test(configured) || configured.startsWith('/')
     return isAbsolute ? configured : join(process.cwd(), configured)
   }
+  let current = process.cwd()
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (existsSync(join(current, 'package.json')) && existsSync(join(current, 'packages'))) return join(current, 'data', 'local-db.json')
+    current = dirname(current)
+  }
   return join(process.cwd(), 'data', 'local-db.json')
 }
 
@@ -109,14 +114,22 @@ export function updateDb<T>(mutator: (db: LocalDb) => T) {
 }
 
 export function isSupabaseConfigured() {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  return Boolean(supabaseUrl() && supabaseSecretKey())
 }
 
 export function getSupabaseServiceClient(): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  return createClient(supabaseUrl()!, supabaseSecretKey()!, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+}
+
+function supabaseUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+}
+
+function supabaseSecretKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
 }
 
 function now() {
@@ -519,4 +532,507 @@ export function localLoginAllowed(email: string, password: string) {
   const configuredPassword = process.env.MAB_BOOTSTRAP_ADMIN_PASSWORD
   if (configuredEmail || configuredPassword) return email === configuredEmail && password === configuredPassword
   return process.env.NODE_ENV !== 'production' && Boolean(email.trim() && password.trim())
+}
+
+type SupabaseRow = Record<string, unknown>
+
+function asRow(value: unknown): SupabaseRow {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as SupabaseRow : {}
+}
+
+function asRows(value: unknown) {
+  return Array.isArray(value) ? value.map(asRow) : []
+}
+
+function stringValue(value: unknown, fallback = '') {
+  return typeof value === 'string' ? value : value === null || value === undefined ? fallback : String(value)
+}
+
+function optionalString(value: unknown) {
+  const result = stringValue(value)
+  return result || undefined
+}
+
+function numberValue(value: unknown, fallback = 0) {
+  const result = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(result) ? result : fallback
+}
+
+function booleanValue(value: unknown, fallback = false) {
+  return typeof value === 'boolean' ? value : fallback
+}
+
+function arrayValue<T>(value: unknown, fallback: T[] = []) {
+  return Array.isArray(value) ? value as T[] : fallback
+}
+
+function relatedRow(source: SupabaseRow, key: string) {
+  const value = source[key]
+  return Array.isArray(value) ? asRow(value[0]) : asRow(value)
+}
+
+function mapBranch(value: unknown): Branch {
+  const row = asRow(value)
+  const fallback = BRANCHES.find((item) => item.id === optionalString(row.id) || item.slug === optionalString(row.slug))
+  return {
+    ...(fallback ?? {
+      id: stringValue(row.id),
+      slug: stringValue(row.slug),
+      name: stringValue(row.name),
+      shortName: stringValue(row.name),
+      address: stringValue(row.address),
+      plusCode: stringValue(row.plus_code),
+      smartPhone: stringValue(row.smart_phone),
+      globePhone: stringValue(row.globe_phone),
+      isGoogleBusinessVerified: booleanValue(row.is_google_business_verified),
+      imageUrl: '/images/clinic-signage.jpg',
+    }),
+    id: stringValue(row.id, fallback?.id),
+    slug: stringValue(row.slug, fallback?.slug),
+    name: stringValue(row.name, fallback?.name),
+    shortName: fallback?.shortName ?? stringValue(row.name),
+    address: stringValue(row.address, fallback?.address),
+    plusCode: stringValue(row.plus_code, fallback?.plusCode),
+    latitude: row.latitude === null || row.latitude === undefined ? fallback?.latitude : numberValue(row.latitude),
+    longitude: row.longitude === null || row.longitude === undefined ? fallback?.longitude : numberValue(row.longitude),
+    smartPhone: stringValue(row.smart_phone, fallback?.smartPhone),
+    globePhone: stringValue(row.globe_phone, fallback?.globePhone),
+    mapsUrl: optionalString(row.maps_url) ?? fallback?.mapsUrl,
+    googleBusinessProfileUrl: optionalString(row.google_business_profile_url) ?? fallback?.googleBusinessProfileUrl,
+    googleReviewUrl: optionalString(row.google_review_url) ?? fallback?.googleReviewUrl,
+    isGoogleBusinessVerified: booleanValue(row.is_google_business_verified, fallback?.isGoogleBusinessVerified ?? false),
+    imageUrl: fallback?.imageUrl ?? '/images/clinic-signage.jpg',
+  }
+}
+
+function mapService(value: unknown): Service {
+  const row = asRow(value)
+  const fallback = SERVICES.find((item) => item.id === optionalString(row.id) || item.slug === optionalString(row.slug))
+  return {
+    ...(fallback ?? {
+      id: stringValue(row.id),
+      slug: stringValue(row.slug),
+      name: stringValue(row.name),
+      category: stringValue(row.category),
+      shortDescription: stringValue(row.short_description),
+      longDescription: stringValue(row.long_description),
+      defaultDurationMinutes: numberValue(row.default_duration_minutes, 60),
+      price: row.price === null || row.price === undefined ? null : numberValue(row.price),
+      isActive: booleanValue(row.is_active, true),
+      isFeatured: booleanValue(row.is_featured),
+      imageUrl: '/images/clinic-detail.jpg',
+      concernTags: [],
+      processSteps: [],
+      faq: [],
+    }),
+    id: stringValue(row.id, fallback?.id),
+    slug: stringValue(row.slug, fallback?.slug),
+    name: stringValue(row.name, fallback?.name),
+    category: stringValue(row.category, fallback?.category),
+    shortDescription: stringValue(row.short_description, fallback?.shortDescription),
+    longDescription: stringValue(row.long_description, fallback?.longDescription),
+    defaultDurationMinutes: numberValue(row.default_duration_minutes, fallback?.defaultDurationMinutes ?? 60),
+    price: row.price === null || row.price === undefined ? fallback?.price ?? null : numberValue(row.price),
+    isActive: booleanValue(row.is_active, fallback?.isActive ?? true),
+    isFeatured: booleanValue(row.is_featured, fallback?.isFeatured ?? false),
+    imageUrl: fallback?.imageUrl ?? '/images/clinic-detail.jpg',
+    concernTags: arrayValue<string>(row.concern_tags, fallback?.concernTags ?? []),
+    processSteps: arrayValue<string>(row.process_steps, fallback?.processSteps ?? []),
+    faq: arrayValue<{ question: string; answer: string }>(row.faq, fallback?.faq ?? []),
+  }
+}
+
+function mapPatient(value: unknown): Patient {
+  const row = asRow(value)
+  return {
+    id: stringValue(row.id),
+    fullName: stringValue(row.full_name),
+    phone: stringValue(row.phone),
+    phoneNormalized: stringValue(row.phone_normalized),
+    email: optionalString(row.email),
+    preferredBranchId: optionalString(row.preferred_branch_id),
+    createdAt: stringValue(row.created_at),
+    updatedAt: stringValue(row.updated_at),
+    lastVisitAt: optionalString(row.last_visit_at),
+  }
+}
+
+function mapPayment(value: unknown): Payment {
+  const row = asRow(value)
+  return {
+    id: stringValue(row.id),
+    appointmentId: optionalString(row.appointment_id),
+    patientId: stringValue(row.patient_id),
+    branchId: stringValue(row.branch_id),
+    amount: numberValue(row.amount),
+    paymentMethod: stringValue(row.payment_method) as PaymentMethod,
+    status: stringValue(row.status) as PaymentStatus,
+    referenceNumber: optionalString(row.reference_number),
+    paidAt: optionalString(row.paid_at),
+    createdBy: optionalString(row.created_by),
+    createdAt: stringValue(row.created_at),
+  }
+}
+
+function mapAppointment(value: unknown) {
+  const row = asRow(value)
+  const history = asRows(row.appointment_status_history).map((item) => ({
+    id: stringValue(item.id),
+    fromStatus: optionalString(item.from_status) as AppointmentStatus | undefined,
+    toStatus: stringValue(item.to_status) as AppointmentStatus,
+    changedBy: optionalString(item.changed_by),
+    note: optionalString(item.note),
+    createdAt: stringValue(item.created_at),
+  }))
+  const appointment: Appointment = {
+    id: stringValue(row.id),
+    publicCode: stringValue(row.public_code),
+    patientId: stringValue(row.patient_id),
+    branchId: stringValue(row.branch_id),
+    serviceId: optionalString(row.service_id),
+    concernText: optionalString(row.concern_text),
+    requestedStartAt: stringValue(row.requested_start_at),
+    confirmedStartAt: optionalString(row.confirmed_start_at),
+    durationMinutes: numberValue(row.duration_minutes, 30),
+    status: stringValue(row.status) as AppointmentStatus,
+    source: stringValue(row.source, 'PUBLIC') as Appointment['source'],
+    patientMessage: optionalString(row.patient_message),
+    internalNote: optionalString(row.internal_note),
+    assignedDentistId: optionalString(row.assigned_dentist_id),
+    createdByStaffId: optionalString(row.created_by_staff_id),
+    updatedByStaffId: optionalString(row.updated_by_staff_id),
+    createdAt: stringValue(row.created_at),
+    updatedAt: stringValue(row.updated_at),
+    cancelledAt: optionalString(row.cancelled_at),
+    completedAt: optionalString(row.completed_at),
+    statusHistory: history,
+  }
+  return {
+    ...appointment,
+    patient: Object.keys(relatedRow(row, 'patients')).length ? mapPatient(relatedRow(row, 'patients')) : undefined,
+    branch: Object.keys(relatedRow(row, 'branches')).length ? mapBranch(relatedRow(row, 'branches')) : undefined,
+    service: Object.keys(relatedRow(row, 'services')).length ? mapService(relatedRow(row, 'services')) : undefined,
+    payments: asRows(row.payments).map(mapPayment),
+  }
+}
+
+function databaseUnavailable() {
+  return new Error('The clinic database is not configured.')
+}
+
+async function supabaseAppointmentRows(filters?: { status?: string; branchId?: string }) {
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  let query = supabase
+    .from('appointments')
+    .select('*, patients(*), branches(*), services(*), appointment_status_history(*), payments(*)')
+    .order('created_at', { ascending: false })
+  if (filters?.status && filters.status !== 'ALL') query = query.eq('status', filters.status)
+  if (filters?.branchId && filters.branchId !== 'ALL') query = query.eq('branch_id', filters.branchId)
+  const result = await query
+  if (result.error) throw new Error('Unable to access the appointment database.')
+  return asRows(result.data)
+}
+
+export async function listAppointments(filters?: { status?: string; branchId?: string; query?: string }) {
+  if (!isSupabaseConfigured()) return listLocalAppointments(filters)
+  const query = filters?.query?.toLowerCase().trim()
+  return (await supabaseAppointmentRows(filters))
+    .map(mapAppointment)
+    .filter((appointment) => !query || appointment.publicCode.toLowerCase().includes(query) || appointment.patient?.fullName.toLowerCase().includes(query) || appointment.patient?.phone.includes(query))
+}
+
+export async function getAppointment(id: string) {
+  if (!isSupabaseConfigured()) return getLocalAppointment(id)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('appointments').select('*, patients(*), branches(*), services(*), appointment_status_history(*), payments(*)').eq('id', id).maybeSingle()
+  if (result.error) throw new Error('Unable to access the appointment database.')
+  return result.data ? mapAppointment(result.data) : null
+}
+
+export async function updateAppointment(id: string, action: string, payload: { startAt?: string; note?: string }) {
+  if (!isSupabaseConfigured()) return updateLocalAppointment(id, action, payload)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const currentResult = await supabase.from('appointments').select('*, patients(*), branches(*), services(*), appointment_status_history(*), payments(*)').eq('id', id).maybeSingle()
+  if (currentResult.error) throw new Error('Unable to access the appointment database.')
+  if (!currentResult.data) throw new Error('Appointment not found.')
+  const current = mapAppointment(currentResult.data)
+  const from = current.status
+  const next: Record<string, AppointmentStatus> = {
+    confirm: 'CONFIRMED',
+    suggest: 'RESCHEDULE_PROPOSED',
+    decline: 'DECLINED',
+    cancel: 'CANCELLED',
+    'check-in': 'CHECKED_IN',
+    'start-treatment': 'IN_TREATMENT',
+    complete: 'COMPLETED',
+    'no-show': 'NO_SHOW',
+    reschedule: 'CONFIRMED',
+  }
+  const to = next[action]
+  if (!to) throw new Error('Unknown appointment action.')
+  const allowed: Record<AppointmentStatus, AppointmentStatus[]> = {
+    PENDING_REVIEW: ['CONFIRMED', 'RESCHEDULE_PROPOSED', 'DECLINED', 'CANCELLED'],
+    CONFIRMED: ['CHECKED_IN', 'RESCHEDULE_PROPOSED', 'CANCELLED', 'NO_SHOW'],
+    RESCHEDULE_PROPOSED: ['CONFIRMED', 'DECLINED', 'CANCELLED'],
+    CHECKED_IN: ['IN_TREATMENT', 'CANCELLED'],
+    IN_TREATMENT: ['COMPLETED'],
+    COMPLETED: [],
+    CANCELLED: [],
+    DECLINED: [],
+    NO_SHOW: [],
+  }
+  if (!allowed[from].includes(to)) throw new Error('Cannot move ' + from + ' to ' + to + '.')
+  const startAt = payload.startAt || current.confirmedStartAt || current.requestedStartAt
+  if (to === 'CONFIRMED' || to === 'RESCHEDULE_PROPOSED') {
+    validateAppointmentTime(startAt, current.durationMinutes)
+    if (to === 'CONFIRMED') {
+      const conflicts = await supabase.from('appointments').select('id, branch_id, confirmed_start_at, requested_start_at, duration_minutes, status').eq('branch_id', current.branchId).in('status', ['CONFIRMED', 'CHECKED_IN', 'IN_TREATMENT'])
+      if (conflicts.error) throw new Error('Unable to verify appointment availability.')
+      const hasConflict = asRows(conflicts.data).some((row) => {
+        if (stringValue(row.id) === id) return false
+        const existingStart = new Date(optionalString(row.confirmed_start_at) ?? stringValue(row.requested_start_at)).getTime()
+        const existingEnd = existingStart + numberValue(row.duration_minutes, 30) * 60_000
+        const targetStart = new Date(startAt).getTime()
+        return targetStart < existingEnd && targetStart + current.durationMinutes * 60_000 > existingStart
+      })
+      if (hasConflict) throw new Error('That time overlaps another confirmed appointment at this branch.')
+    }
+  }
+  const updatedAt = now()
+  const updatePayload: Record<string, unknown> = { status: to, updated_at: updatedAt }
+  if (to === 'CONFIRMED' || to === 'RESCHEDULE_PROPOSED') updatePayload.confirmed_start_at = startAt
+  if (to === 'CANCELLED') updatePayload.cancelled_at = updatedAt
+  if (to === 'COMPLETED') updatePayload.completed_at = updatedAt
+  const updated = await supabase.from('appointments').update(updatePayload).eq('id', id).select('*').single()
+  if (updated.error) throw new Error('Unable to update appointment.')
+  const history = await supabase.from('appointment_status_history').insert({ appointment_id: id, from_status: from, to_status: to, note: payload.note?.trim() || null })
+  if (history.error) throw new Error('Appointment updated, but its status history could not be recorded.')
+  const audit = await supabase.from('audit_logs').insert({ action: 'APPOINTMENT_' + action.toUpperCase(), entity_type: 'appointment', entity_id: id, metadata: { from, to, note: payload.note } })
+  if (audit.error) throw new Error('Appointment updated, but its audit entry could not be recorded.')
+  if (to === 'COMPLETED') await supabase.from('patients').update({ last_visit_at: updatedAt, updated_at: updatedAt }).eq('id', current.patientId)
+  return getAppointment(id)
+}
+
+export async function listPatients(query?: string) {
+  if (!isSupabaseConfigured()) return listLocalPatients(query)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('patients').select('*').order('created_at', { ascending: false })
+  if (result.error) throw new Error('Unable to access the patient database.')
+  const normalized = query?.toLowerCase().trim()
+  const appointments = await listAppointments()
+  const payments = await listPayments()
+  return asRows(result.data)
+    .map(mapPatient)
+    .filter((patient) => !normalized || patient.fullName.toLowerCase().includes(normalized) || patient.phone.includes(normalized) || patient.email?.toLowerCase().includes(normalized))
+    .map((patient) => ({ ...patient, appointments: appointments.filter((appointment) => appointment.patientId === patient.id), payments: payments.filter((payment) => payment.patientId === patient.id) }))
+}
+
+export async function getPatient(id: string) {
+  if (!isSupabaseConfigured()) return getLocalPatient(id)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('patients').select('*').eq('id', id).maybeSingle()
+  if (result.error) throw new Error('Unable to access the patient database.')
+  if (!result.data) return null
+  const patient = mapPatient(result.data)
+  const [appointments, payments] = await Promise.all([listAppointments(), listPayments()])
+  return { ...patient, appointments: appointments.filter((appointment) => appointment.patientId === id), payments: payments.filter((payment) => payment.patientId === id) }
+}
+
+export async function listPayments() {
+  if (!isSupabaseConfigured()) return listLocalPayments()
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('payments').select('*, patients(*), branches(*)').order('created_at', { ascending: false })
+  if (result.error) throw new Error('Unable to access the payments database.')
+  return asRows(result.data).map((row) => ({
+    ...mapPayment(row),
+    patient: Object.keys(relatedRow(row, 'patients')).length ? mapPatient(relatedRow(row, 'patients')) : undefined,
+    branch: Object.keys(relatedRow(row, 'branches')).length ? mapBranch(relatedRow(row, 'branches')) : undefined,
+  }))
+}
+
+export async function createPayment(input: { appointmentId?: string; patientId: string; branchId: string; amount: number; paymentMethod: PaymentMethod; status: PaymentStatus; referenceNumber?: string }) {
+  if (!isSupabaseConfigured()) return createLocalPayment(input)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('payments').insert({ appointment_id: input.appointmentId ?? null, patient_id: input.patientId, branch_id: input.branchId, amount: input.amount, payment_method: input.paymentMethod, status: input.status, reference_number: input.referenceNumber ?? null, paid_at: input.status === 'PAID' ? now() : null }).select('*').single()
+  if (result.error) throw new Error('Unable to record payment.')
+  await supabase.from('audit_logs').insert({ action: 'PAYMENT_RECORDED', entity_type: 'payment', entity_id: result.data.id, metadata: { amount: input.amount, method: input.paymentMethod } })
+  return mapPayment(result.data)
+}
+
+function mapInventoryItem(value: unknown) {
+  const row = asRow(value)
+  return {
+    id: stringValue(row.id),
+    name: stringValue(row.name),
+    sku: optionalString(row.sku),
+    unit: stringValue(row.unit),
+    reorderLevel: numberValue(row.reorder_level),
+    isActive: booleanValue(row.is_active, true),
+    createdAt: stringValue(row.created_at),
+    updatedAt: stringValue(row.updated_at),
+  } satisfies InventoryItem
+}
+
+function mapInventoryStock(value: unknown) {
+  const row = asRow(value)
+  return {
+    branchId: stringValue(row.branch_id),
+    inventoryItemId: stringValue(row.inventory_item_id),
+    quantity: numberValue(row.quantity),
+    updatedAt: stringValue(row.updated_at),
+  } satisfies InventoryStock
+}
+
+function mapInventoryMovement(value: unknown) {
+  const row = asRow(value)
+  return {
+    id: stringValue(row.id),
+    branchId: stringValue(row.branch_id),
+    inventoryItemId: stringValue(row.inventory_item_id),
+    type: stringValue(row.type) as InventoryMovement['type'],
+    quantity: numberValue(row.quantity),
+    reason: stringValue(row.reason),
+    appointmentId: optionalString(row.appointment_id),
+    createdBy: optionalString(row.created_by),
+    createdAt: stringValue(row.created_at),
+  } satisfies InventoryMovement
+}
+
+export async function listInventory() {
+  if (!isSupabaseConfigured()) return listLocalInventory()
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const [items, stock] = await Promise.all([
+    supabase.from('inventory_items').select('*').order('name', { ascending: true }),
+    supabase.from('inventory_stock').select('*, branches(*)'),
+  ])
+  if (items.error || stock.error) throw new Error('Unable to access the inventory database.')
+  const stockRows = asRows(stock.data)
+  return asRows(items.data).map((item) => ({
+    ...mapInventoryItem(item),
+    stock: stockRows.filter((row) => stringValue(row.inventory_item_id) === stringValue(asRow(item).id)).map((row) => ({ ...mapInventoryStock(row), branch: Object.keys(relatedRow(row, 'branches')).length ? mapBranch(relatedRow(row, 'branches')) : undefined })),
+  }))
+}
+
+export async function createInventoryItem(input: { name: string; unit: string; reorderLevel: number; sku?: string }) {
+  if (!isSupabaseConfigured()) return createLocalInventoryItem(input)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('inventory_items').insert({ name: input.name, unit: input.unit, reorder_level: input.reorderLevel, sku: input.sku ?? null }).select('*').single()
+  if (result.error) throw new Error('Unable to create inventory item.')
+  await supabase.from('audit_logs').insert({ action: 'INVENTORY_ITEM_CREATED', entity_type: 'inventory_item', entity_id: result.data.id })
+  return mapInventoryItem(result.data)
+}
+
+export async function moveInventory(input: { itemId: string; branchId: string; type: 'IN' | 'OUT' | 'ADJUSTMENT'; quantity: number; reason: string }) {
+  if (!isSupabaseConfigured()) return moveLocalInventory(input)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const existing = await supabase.from('inventory_stock').select('*').eq('inventory_item_id', input.itemId).eq('branch_id', input.branchId).maybeSingle()
+  if (existing.error) throw new Error('Unable to read inventory stock.')
+  const current = existing.data ? numberValue(existing.data.quantity) : 0
+  const next = input.type === 'IN' ? current + input.quantity : input.type === 'OUT' ? current - input.quantity : input.quantity
+  if (next < 0) throw new Error('Stock cannot go below zero.')
+  const stock = await supabase.from('inventory_stock').upsert({ inventory_item_id: input.itemId, branch_id: input.branchId, quantity: next, updated_at: now() }, { onConflict: 'branch_id,inventory_item_id' })
+  if (stock.error) throw new Error('Unable to update inventory stock.')
+  const movement = await supabase.from('inventory_movements').insert({ inventory_item_id: input.itemId, branch_id: input.branchId, type: input.type, quantity: input.quantity, reason: input.reason }).select('*').single()
+  if (movement.error) throw new Error('Stock updated, but the movement could not be recorded.')
+  await supabase.from('audit_logs').insert({ action: 'INVENTORY_MOVEMENT_RECORDED', entity_type: 'inventory_item', entity_id: input.itemId, metadata: { type: input.type, quantity: input.quantity } })
+  return mapInventoryMovement(movement.data)
+}
+
+export async function listServices() {
+  if (!isSupabaseConfigured()) return listLocalServices()
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('services').select('*').order('name', { ascending: true })
+  if (result.error) throw new Error('Unable to access the services database.')
+  return asRows(result.data).map(mapService)
+}
+
+export async function updateService(id: string, patch: Partial<Service>) {
+  if (!isSupabaseConfigured()) return updateLocalService(id, patch)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('services').update({ is_active: patch.isActive, updated_at: now() }).eq('id', id).select('*').single()
+  if (result.error) throw new Error('Unable to update service.')
+  await supabase.from('audit_logs').insert({ action: 'SERVICE_UPDATED', entity_type: 'service', entity_id: id, metadata: { fields: Object.keys(patch) } })
+  return mapService(result.data)
+}
+
+export async function listBranches() {
+  if (!isSupabaseConfigured()) return readDb().branches
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('branches').select('*').order('name', { ascending: true })
+  if (result.error) throw new Error('Unable to access the branches database.')
+  return asRows(result.data).map(mapBranch)
+}
+
+export async function updateBranch(id: string, patch: Partial<Branch>) {
+  if (!isSupabaseConfigured()) return updateLocalBranch(id, patch)
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('branches').update({ maps_url: patch.mapsUrl ?? null, google_review_url: patch.googleReviewUrl ?? null, updated_at: now() }).eq('id', id).select('*').single()
+  if (result.error) throw new Error('Unable to update branch.')
+  await supabase.from('audit_logs').insert({ action: 'BRANCH_UPDATED', entity_type: 'branch', entity_id: id, metadata: { fields: Object.keys(patch) } })
+  return mapBranch(result.data)
+}
+
+export async function listStaff() {
+  if (!isSupabaseConfigured()) return readDb().staff
+  const supabase = getSupabaseServiceClient()
+  if (!supabase) throw databaseUnavailable()
+  const result = await supabase.from('staff_profiles').select('*').order('full_name', { ascending: true })
+  if (result.error) throw new Error('Unable to access the staff database.')
+  return asRows(result.data).map((row) => ({
+    id: stringValue(row.id),
+    email: stringValue(row.email),
+    fullName: stringValue(row.full_name),
+    role: stringValue(row.role) as Role,
+    branchId: optionalString(row.branch_id),
+    isActive: booleanValue(row.is_active, true),
+    mustChangePassword: booleanValue(row.must_change_password),
+  } satisfies StaffProfile))
+}
+
+export async function dashboardSnapshotData() {
+  if (!isSupabaseConfigured()) return dashboardSnapshot()
+  const [appointments, payments, inventory] = await Promise.all([listAppointments(), listPayments(), listInventory()])
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS.timezone }).format(new Date())
+  const dayAppointments = appointments.filter((appointment) => new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS.timezone }).format(new Date(appointment.confirmedStartAt ?? appointment.requestedStartAt)) === today)
+  const paymentsToday = payments.filter((payment) => payment.paidAt && new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS.timezone }).format(new Date(payment.paidAt)) === today && payment.status === 'PAID')
+  return {
+    today: dayAppointments,
+    counts: {
+      today: dayAppointments.length,
+      pending: appointments.filter((item) => item.status === 'PENDING_REVIEW').length,
+      confirmed: dayAppointments.filter((item) => item.status === 'CONFIRMED').length,
+      checkedIn: dayAppointments.filter((item) => item.status === 'CHECKED_IN').length,
+      completed: dayAppointments.filter((item) => item.status === 'COMPLETED').length,
+      noShow: dayAppointments.filter((item) => item.status === 'NO_SHOW').length,
+      payments: paymentsToday.reduce((sum, payment) => sum + payment.amount, 0),
+      lowStock: inventory.reduce((count, item) => count + item.stock.filter((stock) => stock.quantity <= item.reorderLevel).length, 0),
+    },
+  }
+}
+
+export async function reportsSnapshot() {
+  if (!isSupabaseConfigured()) {
+    const db = readDb()
+    const byStatus = Object.fromEntries(['PENDING_REVIEW', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'DECLINED', 'NO_SHOW'].map((status) => [status, db.appointments.filter((appointment) => appointment.status === status).length]))
+    const branchComparison = db.branches.map((branch) => ({ branch: branch.name, appointments: db.appointments.filter((appointment) => appointment.branchId === branch.id).length, completed: db.appointments.filter((appointment) => appointment.branchId === branch.id && appointment.status === 'COMPLETED').length, payments: db.payments.filter((payment) => payment.branchId === branch.id && payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }))
+    return { byStatus, branchComparison, payments: db.payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }
+  }
+  const [appointments, payments, branches] = await Promise.all([listAppointments(), listPayments(), listBranches()])
+  const byStatus = Object.fromEntries(['PENDING_REVIEW', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'DECLINED', 'NO_SHOW'].map((status) => [status, appointments.filter((appointment) => appointment.status === status).length]))
+  const branchComparison = branches.map((branch) => ({ branch: branch.name, appointments: appointments.filter((appointment) => appointment.branchId === branch.id).length, completed: appointments.filter((appointment) => appointment.branchId === branch.id && appointment.status === 'COMPLETED').length, payments: payments.filter((payment) => payment.branchId === branch.id && payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }))
+  return { byStatus, branchComparison, payments: payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }
 }
