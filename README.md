@@ -1,60 +1,65 @@
-# M.A.B. Dental Clinic system
+# M.A.B. Dental Clinic
 
-This repository contains two separate Next.js applications backed by shared clinic configuration:
+Production-oriented patient website and clinic operations workspace for M.A.B. Dental Clinic.
 
-- apps/website — the patient-facing website at http://localhost:3000
-- apps/admin — the staff operations workspace at http://localhost:3001
-- packages/shared — verified business facts, service catalog, domain types, and presentation constants
-- packages/server — server-only local development repository, appointment validation, status transitions, conflict checks, and optional Supabase service-role adapter
-- supabase/ — PostgreSQL migration, seed data, and RLS test starter
+This repository is a small npm-workspaces monorepo with two independently deployable Next.js applications:
 
-The local development store is intentionally file-backed so the public app and admin app can complete an end-to-end flow without a Supabase project. It is for local development only. When Supabase environment variables are present, public appointment inserts use the server-side Supabase adapter.
+| App | Local URL | Purpose |
+| --- | --- | --- |
+| apps/website | http://localhost:3000 | Public clinic website and appointment requests |
+| apps/admin | http://localhost:3001 | Authenticated clinic operations workspace |
 
-## Local setup
+Shared domain types, verified clinic facts, services, links, and presentation configuration live in packages/shared. Server-only appointment validation, status transitions, conflict checks, and the local development repository live in packages/server.
+
+## Quick start
 
 ~~~~text
 npm.cmd install
 npm.cmd run dev
 ~~~~
 
-Open:
+Open the public site at http://localhost:3000 and the admin workspace at http://localhost:3001.
 
-- Public website: http://localhost:3000
-- Admin workspace: http://localhost:3001
+The local app uses a disposable file-backed data store at data/local-db.json. It lets the public and admin apps exercise the complete request-to-completion workflow without requiring cloud credentials. This store is development-only and is ignored by Git.
 
-The admin login is intentionally closed to public signup. In development, if no bootstrap credentials are configured, any non-empty email/password is accepted by the local-only demo mode. For a real environment, set MAB_BOOTSTRAP_ADMIN_EMAIL, MAB_BOOTSTRAP_ADMIN_PASSWORD, and a strong MAB_SESSION_SECRET outside Git.
+The admin login is closed to public signup. When no bootstrap credentials are set and the app is running in development, non-empty values are accepted in a clearly local-only demo mode. Before any deployment, set a real bootstrap email/password and a strong MAB_SESSION_SECRET.
 
-Useful commands:
+## Commands
 
 ~~~~text
+npm.cmd run dev
 npm.cmd run dev:web
 npm.cmd run dev:admin
 npm.cmd run lint
 npm.cmd run typecheck
-npm.cmd run test
 npm.cmd run test:e2e
 npm.cmd run build
 ~~~~
 
-## Environment
+## Product scope
 
-Copy .env.example to a local secret file and fill only the values needed for the environment. Never commit .env, .env.local, service-role keys, or bootstrap passwords.
+The public experience includes:
 
-The public site keeps the supplied verified Valley 1 Google review URL and branch/contact data in packages/shared/src/index.ts. This is the source of truth for the local UI. In production, the same facts should be seeded into Supabase and editable only by authorized staff.
+- Home, Services, dynamic service details, Locations, dynamic branch details, Our Clinic, Reviews, Contact, Book Appointment, Privacy, and Terms.
+- Responsive navigation and mobile menu.
+- Service category and concern exploration.
+- Clinic equipment explorer and accessible image gallery.
+- Verified branch information for Valley 1 and BF Homes / Irineville.
+- Messenger, phone, email, social, maps, and Valley 1 review links.
+- A five-step appointment request flow that returns a readable MAB reference and clearly states that the schedule is pending clinic confirmation.
 
-## Supabase
+The admin experience includes:
 
-1. Create or select one development Supabase project.
-2. Apply supabase/migrations/20260910000000_initial.sql.
-3. Apply supabase/seed.sql.
-4. Run the RLS checks in supabase/tests/rls_test.sql through the project’s pgTAP test workflow.
-5. Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, and SUPABASE_SERVICE_ROLE_KEY only in the correct environment.
-6. Configure Auth redirect/site URLs for both deployments.
-7. Create the initial Super Admin through a trusted Auth/admin workflow, then rotate the temporary bootstrap password.
+- Protected login/logout and server-checked session cookie.
+- Dashboard metrics and pending-request inbox.
+- Appointment list/detail views and lifecycle actions.
+- Patient directory and appointment history.
+- Calendar grouping by local date.
+- Service availability toggles.
+- Branch map/review-link editing.
+- Basic payment recording, inventory items and movements, reports, staff role reference, and settings.
 
-The public booking endpoint validates and normalizes input server-side, creates or matches the patient by normalized phone, stores a PENDING_REVIEW appointment, and returns only a readable public reference. It never exposes operational tables to anonymous browser reads.
-
-## Appointment lifecycle
+Appointment lifecycle:
 
 ~~~~text
 PENDING_REVIEW → CONFIRMED
@@ -65,17 +70,83 @@ CONFIRMED → CANCELLED
 CONFIRMED → NO_SHOW
 ~~~~
 
-Confirmation and rescheduling validate future time, Monday–Saturday clinic hours, and overlapping confirmed appointments at the same branch. Sunday is kept as “Strictly by appointment” and is directed to Messenger.
+Confirmation and rescheduling validate future times, Monday–Saturday hours, Sunday restrictions, and overlapping confirmed appointments at the same branch.
 
-## Deployment
+## Verified clinic configuration
 
-Deploy apps/website and apps/admin as separate Netlify sites with the root directory available to the workspace build. Keep the shared Supabase project and environment variables aligned. Do not deploy the local file-backed data store or the local demo authentication mode. Set admin noindex,nofollow, production HTTPS, secure cookies, and a strong session secret.
+The source of truth is packages/shared/src/index.ts and the Supabase seed:
 
-Target names from the brief:
+- Official name: M.A.B. Dental Clinic
+- Tagline: Your Smile is Our Masterpiece.
+- Timezone: Asia/Manila
+- Hours: Monday–Saturday, 8:00 AM–8:00 PM; Sunday, strictly by appointment
+- Consultation: Free Consultation and Assessment
+- Valley 1 Branch: 138-C Barangay San Antonio, Valley 1, Parañaque City
+- BF Homes / Irineville Branch: Blk 4 Lot 13 Doña Irenea Ave., Irineville 1, BF Homes, Parañaque City
+- BF / Irineville is intentionally not presented as having a verified Google Business profile or review URL.
 
-- mabdentalclinic.netlify.app
-- mabclinicadmin.netlify.app
+Do not add prices, testimonials, doctors, awards, ratings, or other business facts without verification.
 
-## Scope and privacy
+## Supabase setup
 
-This is a clinic operations and appointment-management platform, not a certified EHR/EMR, diagnostic system, payment processor, or audited accounting system. The public booking form intentionally collects only minimum contact/request data. Detailed clinical records should not be added without a separate security and privacy design.
+Apply these files to one development/production Supabase project:
+
+1. supabase/migrations/20260910000000_initial.sql
+2. supabase/seed.sql
+3. supabase/tests/rls_test.sql through the project test workflow
+
+The migration creates operational tables, enums, indexes, helper authorization functions, RLS, and the appointments Realtime publication. The public appointment route uses the service-role key only on the server when Supabase variables are present.
+
+Required environment variables are listed in .env.example. Never commit .env files, service-role keys, bootstrap passwords, database passwords, or patient data.
+
+## Vercel deployment
+
+Deploy the two apps as separate Vercel projects from the same GitHub repository, mabdental/mab-dental-system:
+
+### Public project
+
+- Root directory: apps/website
+- Framework: Next.js
+- Build command: npm run build --workspace @mab/website
+- Install command: npm install
+
+### Admin project
+
+- Root directory: apps/admin
+- Framework: Next.js
+- Build command: npm run build --workspace @mab/admin
+- Install command: npm install
+- Keep the admin deployment noindex/nofollow.
+
+Set the shared Supabase and public-link variables in the appropriate Vercel project environments. Keep SUPABASE_SERVICE_ROLE_KEY, MAB_BOOTSTRAP_ADMIN_PASSWORD, and MAB_SESSION_SECRET server-only. Do not deploy local demo authentication or the file-backed store as a production data source.
+
+## Testing
+
+The current local verification covers:
+
+- npm lint
+- TypeScript typecheck
+- production builds
+- Chromium patient request → admin review → confirmation
+- full appointment lifecycle through completion
+- desktop/mobile public navigation
+- public and admin route sweeps with no error overlay
+- protected admin API returning 401 without a session
+
+Run the full browser suite with:
+
+~~~~text
+npm.cmd run test:e2e
+~~~~
+
+## Contributions
+
+See CONTRIBUTING.md for setup, branch, test, privacy, and pull-request expectations. See SECURITY.md for secret and personal-data handling.
+
+## License
+
+Source code is licensed under the MIT License in LICENSE. Clinic trademarks, branding, photographs, screenshots, and supplied business content are not automatically licensed by the source-code license.
+
+## Production limitations
+
+The current repository is a validated local implementation and deployment-ready foundation. Before public launch, complete the production Supabase adapter for all admin reads/mutations, use Supabase Auth with true staff-profile RBAC, configure Realtime authorization, rotate bootstrap credentials, replace cropped reference imagery with original clinic assets, and run the full role/security/accessibility QA matrix.
