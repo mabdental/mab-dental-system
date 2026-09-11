@@ -110,8 +110,8 @@ Deploy the two apps as separate Vercel projects from the same public GitHub repo
 
 The live projects are:
 
-- Public clinic site: https://mab-dental-system-website.vercel.app
-- Admin workspace: https://mab-dental-system-admin.vercel.app
+- Public clinic site: https://mabdental.vercel.app
+- Admin workspace: https://mabadmin.vercel.app
 
 Each project uses its app directory as the Vercel Root Directory. This keeps the
 public and admin deployments independently deployable while sharing the workspace
@@ -119,13 +119,13 @@ packages.
 
 ### Public project
 
-- Project name: `mab-dental-system-website`
+- Project name: `mabdental`
 - Root directory: `apps/website`
 - Framework: Next.js
 
 ### Admin project
 
-- Project name: `mab-dental-system-admin`
+- Project name: `mabadmin`
 - Root directory: `apps/admin`
 - Framework: Next.js
 - Keep the admin deployment noindex/nofollow.
