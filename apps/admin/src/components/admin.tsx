@@ -17,7 +17,6 @@ import {
   CreditCard,
   Database,
   DoorOpen,
-  ExternalLink,
   FileText,
   HeartPulse,
   LayoutDashboard,
@@ -30,7 +29,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
-import { BRANCHES, BUSINESS, SERVICE_CATEGORIES, SERVICES, type AppointmentStatus, type Role } from '@mab/shared'
+import { BRANCHES, BUSINESS, SERVICES, type AppointmentStatus, type Role } from '@mab/shared'
 
 type PageKind = 'dashboard' | 'appointments' | 'appointment-detail' | 'calendar' | 'patients' | 'patient-detail' | 'staff' | 'services' | 'branches' | 'billing' | 'inventory' | 'reports' | 'settings'
 
@@ -38,6 +37,7 @@ type AppointmentRecord = {
   id: string
   publicCode: string
   status: AppointmentStatus
+  branchId: string
   requestedStartAt: string
   confirmedStartAt?: string
   durationMinutes: number
@@ -101,6 +101,7 @@ export function LoginScreen() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   async function submit(event: React.FormEvent) {
@@ -116,13 +117,16 @@ export function LoginScreen() {
       setLoading(false)
     }
   }
-  return <main className="login-page"><div className="login-panel"><div className="admin-logo"><span className="admin-logo-mark">M.A.B</span><span>Dental Clinic</span></div><p className="eyebrow">CLINIC ADMIN</p><h1>Welcome back.</h1><p className="login-lede">Sign in to manage appointments, patients, and the day-to-day details of the clinic.</p><form onSubmit={submit} className="login-form"><label><span>Email</span><input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label><span>Password</span><input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>{error && <div className="admin-error" role="alert">{error}</div>}<button className="admin-button admin-button-primary admin-button-wide" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'} <ArrowRight size={17} /></button></form><p className="login-footnote"><ShieldCheck size={15} /> Authorized clinic staff only. No public signup.</p></div><div className="login-aside"><div className="login-aside-art"><HeartPulse size={46} /><span>Clear operations.<br />Thoughtful care.</span></div><p>{BUSINESS.tagline}</p></div></main>
+  return <main className="login-page"><div className="login-panel"><div className="admin-logo"><span className="admin-logo-mark">M.A.B</span><span>Dental Clinic</span></div><p className="eyebrow">CLINIC ADMIN</p><h1>Welcome back.</h1><p className="login-lede">Sign in to manage appointments, patients, and the day-to-day details of the clinic.</p><form onSubmit={submit} className="login-form"><label><span>Email</span><input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label><span>Password</span><div className="password-control"><input aria-label="Password" type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /><button type="button" aria-label={showPassword ? "Hide" : "Show"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Hide" : "Show"}</button></div></label>{error && <div className="admin-error" role="alert">{error}</div>}<button className="admin-button admin-button-primary admin-button-wide" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'} <ArrowRight size={17} /></button></form><p className="login-footnote"><ShieldCheck size={15} /> Authorized clinic staff only. No public signup.</p></div><div className="login-aside"><div className="login-aside-art"><HeartPulse size={46} /><span>Clear operations.<br />Thoughtful care.</span></div><p>{BUSINESS.tagline}</p></div></main>
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => { setCollapsed(localStorage.getItem('mab-nav-collapsed') === 'true') }, [])
+  function toggleNavigation() { setCollapsed(value => { localStorage.setItem('mab-nav-collapsed', String(!value)); return !value }) }
   const [profile, setProfile] = useState<{ email: string; role: Role } | null>(null)
   const [checking, setChecking] = useState(true)
   useEffect(() => {
@@ -134,7 +138,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     router.replace('/login')
   }
   if (checking || !profile) return <div className="admin-loading"><div className="loading-mark">M.A.B</div><span>Loading clinic workspace…</span></div>
-  return <div className="admin-shell"><aside className={'admin-sidebar' + (mobileOpen ? ' open' : '')}><div className="sidebar-brand"><div className="admin-logo"><span className="admin-logo-mark">M.A.B</span><span>Dental Clinic</span></div><button className="sidebar-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={19} /></button></div><p className="sidebar-label">OPERATIONS</p><nav>{navItems.map((item) => { const Icon = item.icon; const active = pathname === item.href || pathname.startsWith(item.href + '/'); return <Link href={item.href} key={item.href} className={'sidebar-link' + (active ? ' active' : '')}><Icon size={17} /><span>{item.label}</span>{active && <ChevronRight size={14} />}</Link> })}</nav><div className="sidebar-bottom"><span className="sidebar-status"><Activity size={15} /> Supabase operations</span><button className="sidebar-logout" type="button" onClick={logout}><DoorOpen size={16} /> Sign out</button></div></aside><div className="admin-main"><header className="admin-topbar"><button className="sidebar-open" type="button" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={22} /></button><div><span className="topbar-kicker">M.A.B. DENTAL CLINIC</span><strong>{pageTitle(pathname)}</strong></div><div className="topbar-profile"><Bell size={18} /><span><strong>{profile.email}</strong><small>{statusLabel(profile.role)}</small></span></div></header><div className="admin-content">{children}</div></div>{mobileOpen && <button className="sidebar-scrim" aria-label="Close navigation" type="button" onClick={() => setMobileOpen(false)} />}</div>
+  return <div className={'admin-shell' + (collapsed ? ' nav-collapsed' : '')}><aside className={'admin-sidebar' + (mobileOpen ? ' open' : '')}><div className="sidebar-brand"><div className="admin-logo"><span className="admin-logo-mark">M.A.B</span><span>Dental Clinic</span></div><button className="sidebar-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={19} /></button></div><button className="nav-collapse" type="button" onClick={toggleNavigation} aria-label={collapsed ? "Expand navigation" : "Minimize navigation"} aria-expanded={!collapsed}><Menu size={18} /><span>Minimize menu</span></button><p className="sidebar-label">OPERATIONS</p><nav>{navItems.map((item) => { const Icon = item.icon; const active = pathname === item.href || pathname.startsWith(item.href + '/'); return <Link href={item.href} key={item.href} title={item.label} aria-label={item.label} className={'sidebar-link' + (active ? ' active' : '')}><Icon size={17} /><span>{item.label}</span>{active && <ChevronRight size={14} />}</Link> })}</nav><div className="sidebar-bottom"><span className="sidebar-status"><Activity size={15} /> Supabase operations</span><button className="sidebar-logout" type="button" onClick={logout}><DoorOpen size={16} /> Sign out</button></div></aside><div className="admin-main"><header className="admin-topbar"><button className="sidebar-open" type="button" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={22} /></button><div><span className="topbar-kicker">M.A.B. DENTAL CLINIC</span><strong>{pageTitle(pathname)}</strong></div><div className="topbar-profile"><Bell size={18} /><span><strong>{profile.email}</strong><small>{statusLabel(profile.role)}</small></span></div></header><div className="admin-content">{children}</div></div>{mobileOpen && <button className="sidebar-scrim" aria-label="Close navigation" type="button" onClick={() => setMobileOpen(false)} />}</div>
 }
 
 function pageTitle(pathname: string) {
@@ -257,16 +261,31 @@ function AppointmentDetailView({ data, onAction, onRefresh }: { data: Record<str
 
 function CalendarView({ data }: { data: Record<string, any> }) {
   const appointments = (data.appointments || []) as AppointmentRecord[]
-  const groups = useMemo(() => {
+  const [month, setMonth] = useState(() => new Date())
+  const monthLabel = new Intl.DateTimeFormat('en-PH', { month: 'long', year: 'numeric', timeZone: BUSINESS.timezone }).format(month)
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const first = new Date(month.getFullYear(), month.getMonth(), 1)
+  const start = new Date(first)
+  start.setDate(first.getDate() - first.getDay())
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start)
+    date.setDate(start.getDate() + index)
+    return date
+  })
+  const keyFor = (date: Date) => date.toLocaleDateString('en-CA', { timeZone: BUSINESS.timezone })
+  const eventsByDay = useMemo(() => {
     const map = new Map<string, AppointmentRecord[]>()
     appointments.filter((item) => ['CONFIRMED', 'CHECKED_IN', 'IN_TREATMENT', 'RESCHEDULE_PROPOSED'].includes(item.status)).forEach((item) => {
-      const label = new Intl.DateTimeFormat('en-PH', { dateStyle: 'full', timeZone: BUSINESS.timezone }).format(new Date(item.confirmedStartAt || item.requestedStartAt))
-      map.set(label, [...(map.get(label) || []), item])
+      const key = keyFor(new Date(item.confirmedStartAt || item.requestedStartAt))
+      map.set(key, [...(map.get(key) || []), item])
     })
-    return Array.from(map.entries())
+    return map
   }, [appointments])
-  return <div><WorkspaceHeader eyebrow="CALENDAR" title="The clinic day, at a glance." description="Confirmed schedules are grouped by local date. Reschedule through the appointment detail so conflict checks stay consistent." action={<Link href="/appointments" className="admin-button admin-button-outline">Appointment inbox <ArrowRight size={16} /></Link>} />{groups.length ? <div className="calendar-groups">{groups.map(([label, items]) => <section className="admin-card" key={label}><div className="card-heading"><h2>{label}</h2><span>{items.length} visits</span></div><div className="calendar-list">{items.sort((a, b) => new Date(a.confirmedStartAt || a.requestedStartAt).getTime() - new Date(b.confirmedStartAt || b.requestedStartAt).getTime()).map((item) => <Link href={'/appointments/' + item.id} className="calendar-row" key={item.id}><time>{new Intl.DateTimeFormat('en-PH', { timeStyle: 'short', timeZone: BUSINESS.timezone }).format(new Date(item.confirmedStartAt || item.requestedStartAt))}</time><span><strong>{item.patient?.fullName || 'Patient'}</strong><small>{item.service?.name || 'Consultation'} · {item.branch?.name}</small></span><StatusBadge status={item.status} /><ChevronRight size={17} /></Link>)}</div></section>)}</div> : <div className="admin-card"><EmptyAdminState title="No confirmed visits yet" text="Confirmed appointments will appear here in local branch time." /></div>}</div>
+  function moveMonth(amount: number) { setMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1)) }
+  return <div><WorkspaceHeader eyebrow="CALENDAR" title="The clinic schedule." description="A month view of confirmed visits, with each appointment linked to its operational detail." action={<Link href="/appointments" className="admin-button admin-button-outline">Appointment inbox <ArrowRight size={16} /></Link>} /><section className="admin-card calendar-card"><div className="calendar-toolbar"><div><button className="admin-button admin-button-outline" type="button" onClick={() => moveMonth(-1)} aria-label="Previous month">‹</button><button className="admin-button admin-button-outline" type="button" onClick={() => setMonth(new Date())}>Today</button><button className="admin-button admin-button-outline" type="button" onClick={() => moveMonth(1)} aria-label="Next month">›</button></div><h2>{monthLabel}</h2><span>{appointments.filter((item) => ['CONFIRMED', 'CHECKED_IN', 'IN_TREATMENT', 'RESCHEDULE_PROPOSED'].includes(item.status)).length} scheduled</span></div><div className="calendar-grid">{dayNames.map((day) => <div className="calendar-weekday" key={day}>{day}</div>)}{cells.map((date) => { const key = keyFor(date); const events = (eventsByDay.get(key) || []).sort((a, b) => new Date(a.confirmedStartAt || a.requestedStartAt).getTime() - new Date(b.confirmedStartAt || b.requestedStartAt).getTime()); const inMonth = date.getMonth() === month.getMonth(); return <div className={'calendar-cell' + (inMonth ? '' : ' outside-month')} key={key}><strong>{date.getDate()}</strong><div>{events.slice(0, 3).map((item) => <Link className="calendar-event" href={'/appointments/' + item.id} key={item.id}><time>{new Intl.DateTimeFormat('en-PH', { timeStyle: 'short', timeZone: BUSINESS.timezone }).format(new Date(item.confirmedStartAt || item.requestedStartAt))}</time><span>{item.patient?.fullName || 'Patient'}</span></Link>)}{events.length > 3 && <small className="calendar-more">+{events.length - 3} more</small>}</div></div>})}</div></section></div>
 }
+
+
 
 function PatientsView({ data }: { data: Record<string, any> }) {
   const [query, setQuery] = useState('')
@@ -282,7 +301,8 @@ function PatientDetailView({ data, onAction }: { data: Record<string, any>; onAc
 }
 
 function ServicesView({ data, onRefresh }: { data: Record<string, any>; onRefresh: (message?: string) => void }) {
-  const services = (data.services || []) as { id: string; name: string; category: string; shortDescription: string; defaultDurationMinutes: number; isActive: boolean; price: number | null }[]
+  const services = (data.services || []) as { id: string; name: string; category: string; shortDescription: string; longDescription?: string; defaultDurationMinutes: number; isActive: boolean; isFeatured?: boolean; price: number | null }[]
+  const [editing, setEditing] = useState<typeof services[number] | null>(null)
   async function toggle(service: { id: string; isActive: boolean }) {
     try {
       await requestJson('/api/services/' + service.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !service.isActive }) })
@@ -291,7 +311,18 @@ function ServicesView({ data, onRefresh }: { data: Record<string, any>; onRefres
       window.alert(caught instanceof Error ? caught.message : 'Unable to update service.')
     }
   }
-  return <div><WorkspaceHeader eyebrow="SERVICES" title="Keep the care catalog clear." description="Manage public treatment availability and default durations. Prices remain blank until verified clinic pricing is provided." /><section className="admin-card table-card"><div className="table-meta"><span><strong>{services.length}</strong> services</span><span>All catalog services available to both branches initially</span></div><div className="table-scroll"><table><thead><tr><th>Service</th><th>Category</th><th>Duration</th><th>Price</th><th>Public</th></tr></thead><tbody>{services.map((service) => <tr key={service.id}><td><strong>{service.name}</strong><small>{service.shortDescription}</small></td><td>{service.category}</td><td>{service.defaultDurationMinutes} min</td><td>{service.price === null ? 'Not published' : formatMoney(service.price)}</td><td><button type="button" className={'toggle-button' + (service.isActive ? ' on' : '')} aria-pressed={service.isActive} onClick={() => toggle(service)}><span />{service.isActive ? 'Active' : 'Off'}</button></td></tr>)}</tbody></table></div></section><div className="admin-note"><ShieldCheck size={18} /><span>Only authorized staff should publish service claims or pricing. Descriptions should stay dentist-assessment-safe.</span></div></div>
+  async function saveEdit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!editing) return
+    try {
+      await requestJson('/api/services/' + editing.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing) })
+      setEditing(null)
+      onRefresh('Service details updated.')
+    } catch (caught) {
+      window.alert(caught instanceof Error ? caught.message : 'Unable to update service.')
+    }
+  }
+  return <div><WorkspaceHeader eyebrow="SERVICES" title="Keep the care catalog clear." description="Edit the full catalog when treatment details, duration, pricing, or public availability changes." />{editing && <form className="admin-card service-edit-form" onSubmit={saveEdit}><div className="card-heading"><div><p className="eyebrow">EDIT SERVICE</p><h2>{editing.name}</h2></div><button type="button" className="admin-button admin-button-quiet" onClick={() => setEditing(null)}>Cancel</button></div><div className="form-grid two"><label>Service name<input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} required /></label><label>Category<input value={editing.category} onChange={(event) => setEditing({ ...editing, category: event.target.value })} required /></label><label>Short description<input value={editing.shortDescription} onChange={(event) => setEditing({ ...editing, shortDescription: event.target.value })} required /></label><label>Duration (minutes)<input type="number" min="15" value={editing.defaultDurationMinutes} onChange={(event) => setEditing({ ...editing, defaultDurationMinutes: Number(event.target.value) })} required /></label><label>Price (PHP)<input type="number" min="0" value={editing.price ?? ''} onChange={(event) => setEditing({ ...editing, price: event.target.value === '' ? null : Number(event.target.value) })} /></label><label className="field-full">Long description<textarea rows={4} value={editing.longDescription || ''} onChange={(event) => setEditing({ ...editing, longDescription: event.target.value })} required /></label></div><label className="service-check"><input type="checkbox" checked={editing.isActive} onChange={(event) => setEditing({ ...editing, isActive: event.target.checked })} /><span>Publish this service on the public website</span></label><button className="admin-button admin-button-primary" type="submit">Save service</button></form>}<section className="admin-card table-card"><div className="table-meta"><span><strong>{services.length}</strong> services</span><span>All catalog fields are editable by authorized admin users</span></div><div className="table-scroll"><table><thead><tr><th>Service</th><th>Category</th><th>Duration</th><th>Price</th><th>Public</th><th /></tr></thead><tbody>{services.map((service) => <tr key={service.id}><td><strong>{service.name}</strong><small>{service.shortDescription}</small></td><td>{service.category}</td><td>{service.defaultDurationMinutes} min</td><td>{service.price === null ? 'Not published' : formatMoney(service.price)}</td><td><button type="button" className={'toggle-button' + (service.isActive ? ' on' : '')} aria-pressed={service.isActive} onClick={() => toggle(service)}><span />{service.isActive ? 'Active' : 'Off'}</button></td><td><button type="button" className="admin-button admin-button-outline admin-button-small" onClick={() => setEditing(service)}>Edit</button></td></tr>)}</tbody></table></div></section><div className="admin-note"><ShieldCheck size={18} /><span>Only authorized staff should publish service claims or pricing. Descriptions should stay dentist-assessment-safe.</span></div></div>
 }
 
 function BranchesView({ data, onRefresh }: { data: Record<string, any>; onRefresh: (message?: string) => void }) {
@@ -352,9 +383,46 @@ function InventoryView({ data, onRefresh }: { data: Record<string, any>; onRefre
 }
 
 function ReportsView({ data }: { data: Record<string, any> }) {
-  const byStatus = data.byStatus || {}
-  return <div><WorkspaceHeader eyebrow="REPORTS" title="Operational reporting." description="A practical snapshot of requests, visits, branch activity, and recorded payments." /><div className="metric-grid"><MetricCard label="Requests" value={byStatus.PENDING_REVIEW || 0} detail="Pending review" tone="gold" /><MetricCard label="Confirmed" value={byStatus.CONFIRMED || 0} detail="Current schedule" /><MetricCard label="Completed" value={byStatus.COMPLETED || 0} detail="Finished visits" tone="green" /><MetricCard label="No shows" value={byStatus.NO_SHOW || 0} detail="Recorded separately" tone="soft" /><MetricCard label="Recorded payments" value={formatMoney(data.payments || 0)} detail="Paid status only" tone="soft" /></div><section className="admin-card"><div className="card-heading"><div><p className="eyebrow">BRANCH COMPARISON</p><h2>Activity by branch</h2></div><FileText size={19} /></div><div className="report-branch-grid">{(data.branchComparison || []).map((item: { branch: string; appointments: number; completed: number; payments: number }) => <div className="report-branch-card" key={item.branch}><h3>{item.branch}</h3><div><span>Appointments<strong>{item.appointments}</strong></span><span>Completed<strong>{item.completed}</strong></span><span>Payments<strong>{formatMoney(item.payments)}</strong></span></div></div>)}</div></section><div className="admin-note"><BarChart3 size={18} /><span>These are operational totals, not audited accounting. Add date-range and CSV export when needed.</span></div></div>
+  const [range, setRange] = useState('30')
+  const [branchId, setBranchId] = useState('ALL')
+  const [status, setStatus] = useState('ALL')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
+  const appointments = (data.appointments || []) as AppointmentRecord[]
+  const payments = (data.paymentRecords || []) as { id: string; patientId: string; amount: number; paymentMethod: string; status: string; createdAt: string; paidAt?: string; patient?: { fullName: string }; branch?: { id: string; name: string } }[]
+  const branches = (data.branches || BRANCHES) as typeof BRANCHES
+  const filtered = useMemo(() => {
+    const today = new Date()
+    let start: Date | null = null
+    if (range === '1') start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    if (range === '7') start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
+    if (range === '30') start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29)
+    if (range === '3m') start = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())
+    if (range === '6m') start = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate())
+    if (range === 'custom' && customStart) start = new Date(customStart + 'T00:00:00')
+    const end = range === 'custom' && customEnd ? new Date(customEnd + 'T23:59:59') : null
+    const within = (value: string) => { const date = new Date(value); return (!start || date >= start) && (!end || date <= end) }
+    const matchesBranch = (id?: string) => branchId === 'ALL' || id === branchId
+    const appointmentRows = appointments.filter((item) => within(item.requestedStartAt) && matchesBranch(item.branch?.id || item.branchId) && (status === 'ALL' || item.status === status))
+    const paymentRows = payments.filter((item) => within(item.createdAt) && matchesBranch(item.branch?.id))
+    return { appointmentRows, paymentRows }
+  }, [appointments, payments, branchId, range, status, customStart, customEnd])
+  function exportExcel() {
+    if (range === 'custom' && (!customStart || !customEnd)) { window.alert('Choose both a start and end date before exporting.'); return }
+    const params = new URLSearchParams({ range, branchId, status })
+    if (range === 'custom') { params.set('start', customStart); params.set('end', customEnd) }
+    const anchor = document.createElement('a')
+    anchor.href = '/api/reports/export?' + params.toString()
+    anchor.download = 'mab-dental-report-' + new Date().toISOString().slice(0, 10) + '.xls'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+  }
+  const summary = { pending: filtered.appointmentRows.filter((item) => item.status === 'PENDING_REVIEW').length, confirmed: filtered.appointmentRows.filter((item) => item.status === 'CONFIRMED').length, completed: filtered.appointmentRows.filter((item) => item.status === 'COMPLETED').length, noShow: filtered.appointmentRows.filter((item) => item.status === 'NO_SHOW').length, payments: filtered.paymentRows.filter((item) => item.status === 'PAID').reduce((sum, item) => sum + item.amount, 0) }
+  return <div><WorkspaceHeader eyebrow="REPORTS" title="Operational reporting." description="Filter appointment and payment records by period, branch, and status, then export the visible result to Excel." action={<button className="admin-button admin-button-primary" type="button" onClick={exportExcel}>Export Excel</button>} /><div className="report-filters"><label>Period<select value={range} onChange={(event) => setRange(event.target.value)}><option value="1">Last 1 day</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="ALL">All time</option><option value="custom">Custom range</option></select></label><label>Branch<select value={branchId} onChange={(event) => setBranchId(event.target.value)}><option value="ALL">All branches</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="ALL">All statuses</option>{['PENDING_REVIEW', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'DECLINED', 'NO_SHOW'].map((item) => <option value={item} key={item}>{statusLabel(item)}</option>)}</select></label>{range === 'custom' && <><label>From<input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} /></label><label>To<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} /></label></>}</div><div className="metric-grid"><MetricCard label="Requests" value={summary.pending} detail={filtered.appointmentRows.length + ' filtered appointments'} tone="gold" /><MetricCard label="Confirmed" value={summary.confirmed} detail="Filtered schedule" /><MetricCard label="Completed" value={summary.completed} detail="Filtered visits" tone="green" /><MetricCard label="No shows" value={summary.noShow} detail="Filtered records" tone="soft" /><MetricCard label="Recorded payments" value={formatMoney(summary.payments)} detail={filtered.paymentRows.length + ' filtered payments'} tone="soft" /></div><section className="admin-card"><div className="card-heading"><div><p className="eyebrow">BRANCH COMPARISON</p><h2>Activity by branch</h2></div><FileText size={19} /></div><div className="report-branch-grid">{branches.map((branch) => { const rows = filtered.appointmentRows.filter((item) => item.branch?.id === branch.id); const branchPayments = filtered.paymentRows.filter((item) => item.branch?.id === branch.id && item.status === 'PAID').reduce((sum, item) => sum + item.amount, 0); return <div className="report-branch-card" key={branch.id}><h3>{branch.name}</h3><div><span>Appointments<strong>{rows.length}</strong></span><span>Completed<strong>{rows.filter((item) => item.status === 'COMPLETED').length}</strong></span><span>Payments<strong>{formatMoney(branchPayments)}</strong></span></div></div>})}</div></section></div>
 }
+
+
 
 function StaffView({ data }: { data: Record<string, any> }) {
   const staff = data.staff || []

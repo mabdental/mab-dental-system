@@ -13,6 +13,17 @@
   --shadow: 0 18px 50px rgba(8, 45, 87, 0.07);
 }
 
+.nav-collapse { display:flex; align-items:center; gap:10px; border:0; background:transparent; color:white; padding:12px; margin-bottom:18px; }
+@media(min-width:901px) {
+ .nav-collapsed .admin-sidebar { width:76px; padding:16px 8px; }
+ .nav-collapsed .admin-main { margin-left:76px; width:calc(100% - 76px); }
+ .nav-collapsed .sidebar-brand, .nav-collapsed .sidebar-label, .nav-collapsed .sidebar-link span, .nav-collapsed .sidebar-status, .nav-collapsed .nav-collapse span { display:none; }
+ .nav-collapsed .sidebar-link { justify-content:center; }
+ .nav-collapsed .sidebar-link svg:last-child { margin:0; }
+ .nav-collapsed .sidebar-link svg:not(:first-child) { display:none; }
+ .nav-collapsed .sidebar-logout { font-size:0; justify-content:center; }
+}
+
 * { box-sizing: border-box; }
 body { background: var(--ivory); color: var(--body); font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; margin: 0; }
 button, input, select { font: inherit; }
@@ -242,6 +253,30 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
 .login-form { display: grid; gap: 1rem; margin-top: 2rem; }
 .login-form label { display: grid; color: var(--navy); font-size: 0.75rem; font-weight: 700; gap: 0.35rem; }
 .login-form input { border: 1px solid var(--border); color: var(--navy); padding: 0.85rem; }
+.password-control { display: flex; }
+.password-control input { flex: 1; min-width: 0; }
+.password-control button { background: var(--sand); border: 1px solid var(--border); border-left: 0; color: var(--navy); font-size: 0.68rem; font-weight: 700; min-width: 62px; padding: 0 0.7rem; }
+.calendar-toolbar { align-items: center; display: flex; gap: 1rem; justify-content: space-between; margin-bottom: 1rem; }
+.calendar-toolbar > div { display: flex; gap: 0.35rem; }
+.calendar-toolbar h2 { margin: 0 auto 0 0; }
+.calendar-grid { border-left: 1px solid var(--border); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.calendar-weekday { background: var(--sand); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); color: var(--muted); font-size: 0.65rem; font-weight: 700; padding: 0.6rem; text-align: center; text-transform: uppercase; }
+.calendar-cell { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 105px; padding: 0.55rem; }
+.calendar-cell > strong { color: var(--navy); font-size: 0.72rem; }
+.outside-month { background: rgba(243,245,246,0.55); }
+.outside-month > strong { color: var(--muted); }
+.calendar-event { background: rgba(8,45,87,0.08); border-left: 3px solid var(--gold); border-radius: 3px; display: block; margin-top: 0.35rem; overflow: hidden; padding: 0.3rem; }
+.calendar-event:hover { background: rgba(183,146,76,0.18); }
+.calendar-event time, .calendar-event span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-event time { color: var(--gold); font-size: 0.58rem; }
+.calendar-event span { color: var(--navy); font-size: 0.65rem; font-weight: 700; }
+.calendar-more { color: var(--muted); display: block; font-size: 0.6rem; margin-top: 0.3rem; }
+.report-filters { align-items: end; background: var(--sand); border: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.2rem; padding: 1rem; }
+.report-filters label { color: var(--navy); display: grid; font-size: 0.68rem; font-weight: 700; gap: 0.3rem; }
+.report-filters select, .report-filters input { background: var(--white); border: 1px solid var(--border); color: var(--navy); min-height: 37px; padding: 0.5rem; }
+.service-edit-form { display: grid; gap: 1rem; margin-bottom: 1.2rem; }
+.service-edit-form .card-heading { margin-bottom: 0; }
+.service-check { align-items: center; color: var(--navy); display: flex; font-size: 0.75rem; font-weight: 700; gap: 0.5rem; }
 .login-footnote { align-items: center; color: var(--muted); display: flex; font-size: 0.68rem; gap: 0.35rem; margin-top: 1.4rem; }
 .login-footnote svg { color: #5d9b79; }
 .login-aside { align-items: center; color: #fff; display: flex; flex-direction: column; justify-content: center; padding: 3rem; text-align: center; }
@@ -274,6 +309,7 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
   .role-grid { grid-template-columns: repeat(2, 1fr); }
   .inline-form { align-items: stretch; grid-template-columns: 1fr 1fr; }
   .inline-form .admin-button { align-self: end; }
+  .nav-collapse { display: none; }
 }
 @media (max-width: 560px) {
   .admin-content { padding: 2rem 0.9rem 3rem; }
@@ -300,4 +336,13 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
   .login-panel .admin-logo { margin-bottom: 4rem; }
   .login-panel h1 { font-size: 3rem; }
   .login-aside { display: none; }
+  .calendar-toolbar { align-items: flex-start; flex-wrap: wrap; }
+  .calendar-toolbar h2 { flex-basis: 100%; order: -1; }
+  .calendar-cell { min-height: 78px; padding: 0.3rem; }
+  .calendar-weekday { font-size: 0.52rem; padding: 0.45rem 0.1rem; }
+  .calendar-event { border-left-width: 2px; padding: 0.2rem; }
+  .calendar-event time { display: none; }
+  .calendar-event span { font-size: 0.54rem; }
+  .report-filters { align-items: stretch; flex-direction: column; }
+  .report-filters label, .report-filters select, .report-filters input { width: 100%; }
 }

@@ -59,6 +59,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false)
   useEffect(() => setOpen(false), [pathname])
   return (
+    <>
     <header className="site-header">
       <div className="container header-inner">
         <Link href="/" className="header-logo"><Logo /></Link>
@@ -90,6 +91,11 @@ export function SiteHeader() {
         </div>
       )}
     </header>
+    <div className="mobile-action-bar" aria-label="Quick actions">
+      <a href={SOCIAL_LINKS.messenger} {...ExternalLinkProps()}><MessageCircle size={17} /> Message</a>
+      <Link href="/book"><CalendarDays size={17} /> Book</Link>
+    </div>
+    </>
   )
 }
 

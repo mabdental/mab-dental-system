@@ -982,7 +982,7 @@ export async function updateService(id: string, patch: Partial<Service>) {
   if (!isSupabaseConfigured()) return updateLocalService(id, patch)
   const supabase = getSupabaseServiceClient()
   if (!supabase) throw databaseUnavailable()
-  const result = await supabase.from('services').update({ is_active: patch.isActive, updated_at: now() }).eq('id', id).select('*').single()
+  const result = await supabase.from('services').update({ name: patch.name, category: patch.category, short_description: patch.shortDescription, long_description: patch.longDescription, default_duration_minutes: patch.defaultDurationMinutes, price: patch.price, is_active: patch.isActive, is_featured: patch.isFeatured, updated_at: now() }).eq('id', id).select('*').single()
   if (result.error) throw new Error('Unable to update service.')
   await supabase.from('audit_logs').insert({ action: 'SERVICE_UPDATED', entity_type: 'service', entity_id: id, metadata: { fields: Object.keys(patch) } })
   return mapService(result.data)
@@ -1050,10 +1050,10 @@ export async function reportsSnapshot() {
     const db = readDb()
     const byStatus = Object.fromEntries(['PENDING_REVIEW', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'DECLINED', 'NO_SHOW'].map((status) => [status, db.appointments.filter((appointment) => appointment.status === status).length]))
     const branchComparison = db.branches.map((branch) => ({ branch: branch.name, appointments: db.appointments.filter((appointment) => appointment.branchId === branch.id).length, completed: db.appointments.filter((appointment) => appointment.branchId === branch.id && appointment.status === 'COMPLETED').length, payments: db.payments.filter((payment) => payment.branchId === branch.id && payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }))
-    return { byStatus, branchComparison, payments: db.payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }
+    return { byStatus, branchComparison, payments: db.payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0), appointments: listLocalAppointments(), paymentRecords: listLocalPayments(), branches: db.branches }
   }
   const [appointments, payments, branches] = await Promise.all([listAppointments(), listPayments(), listBranches()])
   const byStatus = Object.fromEntries(['PENDING_REVIEW', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'DECLINED', 'NO_SHOW'].map((status) => [status, appointments.filter((appointment) => appointment.status === status).length]))
   const branchComparison = branches.map((branch) => ({ branch: branch.name, appointments: appointments.filter((appointment) => appointment.branchId === branch.id).length, completed: appointments.filter((appointment) => appointment.branchId === branch.id && appointment.status === 'COMPLETED').length, payments: payments.filter((payment) => payment.branchId === branch.id && payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }))
-  return { byStatus, branchComparison, payments: payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0) }
+  return { byStatus, branchComparison, payments: payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + payment.amount, 0), appointments, paymentRecords: payments, branches }
 }
