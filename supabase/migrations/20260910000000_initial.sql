@@ -292,6 +292,15 @@ grant select on public.branches, public.services, public.branch_services, public
 grant select on all tables in schema public to authenticated;
 grant insert, update on public.appointments, public.appointment_status_history, public.payments, public.inventory_items, public.inventory_stock, public.inventory_movements, public.services, public.branches, public.system_settings to authenticated;
 
+-- The deployed Next.js server uses Supabase's server-only service_role key.
+-- Keep this grant explicit because the table-wide authenticated revoke above
+-- does not grant the server role access to newly created tables.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to service_role;
+alter default privileges in schema public grant usage, select on sequences to service_role;
+
 create policy public_active_branches on public.branches for select to anon, authenticated using (is_active = true);
 create policy public_active_services on public.services for select to anon, authenticated using (is_active = true);
 create policy public_available_branch_services on public.branch_services for select to anon, authenticated using (is_available = true);
