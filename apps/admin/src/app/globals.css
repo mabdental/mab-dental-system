@@ -214,6 +214,7 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
 .modal-form label { color: var(--navy); display: grid; font-size: 0.7rem; font-weight: 700; gap: 0.35rem; }
 .modal-form input, .modal-form select { background: var(--white); border: 1px solid var(--border); color: var(--navy); min-height: 39px; padding: 0.6rem 0.7rem; width: 100%; }
 .modal-actions { border-top: 1px solid var(--border); display: flex; gap: 0.55rem; justify-content: flex-end; margin-top: 0.35rem; padding-top: 0.9rem; }
+.confirm-copy { color: var(--body); font-size: 0.82rem; line-height: 1.6; margin: 0; }
 
 .report-branch-grid { display: grid; gap: 0.8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .report-branch-card { border: 1px solid var(--border); padding: 1rem; }

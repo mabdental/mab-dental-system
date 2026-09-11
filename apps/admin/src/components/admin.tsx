@@ -60,6 +60,11 @@ type ScheduleDialogState = {
   value: string
 }
 
+type ConfirmDialogState = {
+  appointmentId: string
+  action: string
+}
+
 type MovementDialogState = {
   itemId: string
   branchId: string
@@ -176,6 +181,7 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
   const [reloadKey, setReloadKey] = useState(0)
   const [scheduleDialog, setScheduleDialog] = useState<ScheduleDialogState | null>(null)
   const [scheduleError, setScheduleError] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
   const reload = useCallback(async () => {
     setError('')
     try {
@@ -210,13 +216,7 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
     }
     setReloadKey((value) => value + 1)
   }
-  async function appointmentAction(id: string, action: string) {
-    if (action === 'suggest' || action === 'reschedule') {
-      setScheduleError('')
-      setScheduleDialog({ appointmentId: id, action, value: '' })
-      return
-    }
-    if (['cancel', 'decline', 'no-show'].includes(action) && !window.confirm('Are you sure you want to ' + action.replace('-', ' ') + ' this appointment?')) return
+  async function applyAppointmentAction(id: string, action: string) {
     setActionError('')
     try {
       await requestJson('/api/appointments/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
@@ -224,6 +224,25 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : 'Unable to update appointment.')
     }
+  }
+  async function appointmentAction(id: string, action: string) {
+    if (action === 'suggest' || action === 'reschedule') {
+      setScheduleError('')
+      setScheduleDialog({ appointmentId: id, action, value: '' })
+      return
+    }
+    if (['cancel', 'decline', 'no-show'].includes(action)) {
+      setActionError('')
+      setConfirmDialog({ appointmentId: id, action })
+      return
+    }
+    await applyAppointmentAction(id, action)
+  }
+  async function confirmAppointmentAction() {
+    if (!confirmDialog) return
+    const current = confirmDialog
+    setConfirmDialog(null)
+    await applyAppointmentAction(current.appointmentId, current.action)
   }
   async function submitSchedule(event: React.FormEvent) {
     event.preventDefault()
@@ -244,7 +263,7 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
   }
   if (error) return <div className="workspace-state"><div className="state-icon"><Database size={24} /></div><h2>Could not load this view.</h2><p>{error}</p><button className="admin-button admin-button-primary" type="button" onClick={() => { setError(''); refresh() }}>Try again <ArrowRight size={16} /></button></div>
   if (!data) return <div className="workspace-state"><div className="spinner" /><p>Loading workspace…</p></div>
-  return <>{notice && <div className="admin-toast" role="status"><Check size={16} /> {notice}</div>}{actionError && <div className="admin-action-error" role="alert"><X size={16} /> <span>{actionError}</span><button type="button" aria-label="Dismiss error" onClick={() => setActionError('')}><X size={14} /></button></div>}{page === 'dashboard' && <DashboardView data={data} onAction={appointmentAction} />} {page === 'appointments' && <AppointmentsView data={data} onAction={appointmentAction} />} {page === 'appointment-detail' && <AppointmentDetailView data={data} onAction={appointmentAction} onRefresh={refresh} />} {page === 'calendar' && <CalendarView data={data} />} {page === 'patients' && <PatientsView data={data} />} {page === 'patient-detail' && <PatientDetailView data={data} onAction={appointmentAction} />} {page === 'services' && <ServicesView data={data} onRefresh={refresh} />} {page === 'branches' && <BranchesView data={data} onRefresh={refresh} />} {page === 'billing' && <BillingView data={data} />} {page === 'inventory' && <InventoryView data={data} onRefresh={refresh} />} {page === 'reports' && <ReportsView data={data} />} {page === 'staff' && <StaffView data={data} />} {page === 'settings' && <SettingsView />}{scheduleDialog && <AdminDialog title={scheduleDialog.action === 'suggest' ? 'Suggest a new time' : 'Reschedule appointment'} description="Choose the new local clinic date and time." onClose={() => setScheduleDialog(null)}><form className="modal-form" onSubmit={submitSchedule}><label>New local date and time<input type="datetime-local" value={scheduleDialog.value} onChange={(event) => setScheduleDialog({ ...scheduleDialog, value: event.target.value })} required /></label>{scheduleError && <div className="admin-error" role="alert">{scheduleError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setScheduleDialog(null)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save schedule</button></div></form></AdminDialog>}</>
+  return <>{notice && <div className="admin-toast" role="status"><Check size={16} /> {notice}</div>}{actionError && <div className="admin-action-error" role="alert"><X size={16} /> <span>{actionError}</span><button type="button" aria-label="Dismiss error" onClick={() => setActionError('')}><X size={14} /></button></div>}{page === 'dashboard' && <DashboardView data={data} onAction={appointmentAction} />} {page === 'appointments' && <AppointmentsView data={data} onAction={appointmentAction} />} {page === 'appointment-detail' && <AppointmentDetailView data={data} onAction={appointmentAction} onRefresh={refresh} />} {page === 'calendar' && <CalendarView data={data} />} {page === 'patients' && <PatientsView data={data} />} {page === 'patient-detail' && <PatientDetailView data={data} onAction={appointmentAction} />} {page === 'services' && <ServicesView data={data} onRefresh={refresh} />} {page === 'branches' && <BranchesView data={data} onRefresh={refresh} />} {page === 'billing' && <BillingView data={data} />} {page === 'inventory' && <InventoryView data={data} onRefresh={refresh} />} {page === 'reports' && <ReportsView data={data} />} {page === 'staff' && <StaffView data={data} />} {page === 'settings' && <SettingsView />}{scheduleDialog && <AdminDialog title={scheduleDialog.action === 'suggest' ? 'Suggest a new time' : 'Reschedule appointment'} description="Choose the new local clinic date and time." onClose={() => setScheduleDialog(null)}><form className="modal-form" onSubmit={submitSchedule}><label>New local date and time<input type="datetime-local" value={scheduleDialog.value} onChange={(event) => setScheduleDialog({ ...scheduleDialog, value: event.target.value })} required /></label>{scheduleError && <div className="admin-error" role="alert">{scheduleError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setScheduleDialog(null)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save schedule</button></div></form></AdminDialog>}{confirmDialog && <AdminDialog title={'Confirm ' + confirmDialog.action.replace('-', ' ')} description="This status change will be recorded in the appointment timeline." onClose={() => setConfirmDialog(null)}><div className="modal-form"><p className="confirm-copy">Are you sure you want to {confirmDialog.action.replace('-', ' ')} this appointment?</p><div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setConfirmDialog(null)}>Keep appointment</button><button type="button" className="admin-button admin-button-primary" onClick={() => void confirmAppointmentAction()}>Continue</button></div></div></AdminDialog>}</>
 }
 
 function AdminDialog({ title, description, children, onClose }: { title: string; description: string; children: React.ReactNode; onClose: () => void }) {
