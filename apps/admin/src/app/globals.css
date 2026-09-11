@@ -204,6 +204,16 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
 .admin-note { align-items: center; background: var(--sand); color: var(--body); display: flex; font-size: 0.72rem; gap: 0.65rem; margin-top: 1.2rem; padding: 0.9rem 1rem; }
 .admin-note svg { color: var(--gold); }
 .inline-form { align-items: end; display: grid; gap: 0.7rem; grid-template-columns: 1.5fr 0.7fr 0.7fr auto; margin-bottom: 1.2rem; }
+.admin-modal-backdrop { align-items: center; background: rgba(3,33,63,0.52); display: flex; inset: 0; justify-content: center; padding: 1rem; position: fixed; z-index: 40; }
+.admin-modal { background: var(--white); border: 1px solid var(--border); box-shadow: 0 24px 80px rgba(3,33,63,0.25); max-width: 520px; padding: 1.35rem; width: 100%; }
+.modal-heading { align-items: start; display: flex; gap: 1rem; justify-content: space-between; margin-bottom: 1.2rem; }
+.modal-heading h2 { margin-bottom: 0.35rem; }
+.modal-heading p:last-child { color: var(--muted); font-size: 0.72rem; margin: 0; }
+.modal-close { min-height: 31px; padding: 0.35rem; }
+.modal-form { display: grid; gap: 0.85rem; }
+.modal-form label { color: var(--navy); display: grid; font-size: 0.7rem; font-weight: 700; gap: 0.35rem; }
+.modal-form input, .modal-form select { background: var(--white); border: 1px solid var(--border); color: var(--navy); min-height: 39px; padding: 0.6rem 0.7rem; width: 100%; }
+.modal-actions { border-top: 1px solid var(--border); display: flex; gap: 0.55rem; justify-content: flex-end; margin-top: 0.35rem; padding-top: 0.9rem; }
 
 .report-branch-grid { display: grid; gap: 0.8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .report-branch-card { border: 1px solid var(--border); padding: 1rem; }

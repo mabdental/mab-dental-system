@@ -52,6 +52,20 @@ type AppointmentRecord = {
   concernText?: string
 }
 
+type ScheduleDialogState = {
+  appointmentId: string
+  action: 'suggest' | 'reschedule'
+  value: string
+}
+
+type MovementDialogState = {
+  itemId: string
+  branchId: string
+  type: 'IN' | 'OUT'
+  quantity: string
+  reason: string
+}
+
 const navItems: { href: string; label: string; icon: typeof LayoutDashboard }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/appointments', label: 'Appointments', icon: ClipboardList },
@@ -153,6 +167,8 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const [scheduleDialog, setScheduleDialog] = useState<ScheduleDialogState | null>(null)
+  const [scheduleError, setScheduleError] = useState('')
   const reload = useCallback(async () => {
     setError('')
     try {
@@ -187,23 +203,44 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
     setReloadKey((value) => value + 1)
   }
   async function appointmentAction(id: string, action: string) {
-    let startAt: string | undefined
     if (action === 'suggest' || action === 'reschedule') {
-      const proposed = window.prompt('Enter the new local date and time as YYYY-MM-DDTHH:MM')
-      if (!proposed) return
-      startAt = new Date(proposed + ':00+08:00').toISOString()
+      setScheduleError('')
+      setScheduleDialog({ appointmentId: id, action, value: '' })
+      return
     }
     if (['cancel', 'decline', 'no-show'].includes(action) && !window.confirm('Are you sure you want to ' + action.replace('-', ' ') + ' this appointment?')) return
     try {
-      await requestJson('/api/appointments/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, startAt }) })
+      await requestJson('/api/appointments/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
       refresh('Appointment updated.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to update appointment.')
     }
   }
+  async function submitSchedule(event: React.FormEvent) {
+    event.preventDefault()
+    if (!scheduleDialog) return
+    const proposed = new Date(scheduleDialog.value + ':00+08:00')
+    if (!scheduleDialog.value || Number.isNaN(proposed.getTime())) {
+      setScheduleError('Choose a valid local date and time.')
+      return
+    }
+    setScheduleError('')
+    try {
+      await requestJson('/api/appointments/' + scheduleDialog.appointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: scheduleDialog.action, startAt: proposed.toISOString() }) })
+      setScheduleDialog(null)
+      refresh('Appointment updated.')
+    } catch (caught) {
+      setScheduleError(caught instanceof Error ? caught.message : 'Unable to update appointment.')
+    }
+  }
   if (error) return <div className="workspace-state"><div className="state-icon"><Database size={24} /></div><h2>Could not load this view.</h2><p>{error}</p><button className="admin-button admin-button-primary" type="button" onClick={() => { setError(''); refresh() }}>Try again <ArrowRight size={16} /></button></div>
   if (!data) return <div className="workspace-state"><div className="spinner" /><p>Loading workspace…</p></div>
-  return <>{notice && <div className="admin-toast" role="status"><Check size={16} /> {notice}</div>}{page === 'dashboard' && <DashboardView data={data} onAction={appointmentAction} />} {page === 'appointments' && <AppointmentsView data={data} onAction={appointmentAction} />} {page === 'appointment-detail' && <AppointmentDetailView data={data} onAction={appointmentAction} onRefresh={refresh} />} {page === 'calendar' && <CalendarView data={data} />} {page === 'patients' && <PatientsView data={data} />} {page === 'patient-detail' && <PatientDetailView data={data} onAction={appointmentAction} />} {page === 'services' && <ServicesView data={data} onRefresh={refresh} />} {page === 'branches' && <BranchesView data={data} onRefresh={refresh} />} {page === 'billing' && <BillingView data={data} />} {page === 'inventory' && <InventoryView data={data} onRefresh={refresh} />} {page === 'reports' && <ReportsView data={data} />} {page === 'staff' && <StaffView data={data} />} {page === 'settings' && <SettingsView />}</>
+  return <>{notice && <div className="admin-toast" role="status"><Check size={16} /> {notice}</div>}{page === 'dashboard' && <DashboardView data={data} onAction={appointmentAction} />} {page === 'appointments' && <AppointmentsView data={data} onAction={appointmentAction} />} {page === 'appointment-detail' && <AppointmentDetailView data={data} onAction={appointmentAction} onRefresh={refresh} />} {page === 'calendar' && <CalendarView data={data} />} {page === 'patients' && <PatientsView data={data} />} {page === 'patient-detail' && <PatientDetailView data={data} onAction={appointmentAction} />} {page === 'services' && <ServicesView data={data} onRefresh={refresh} />} {page === 'branches' && <BranchesView data={data} onRefresh={refresh} />} {page === 'billing' && <BillingView data={data} />} {page === 'inventory' && <InventoryView data={data} onRefresh={refresh} />} {page === 'reports' && <ReportsView data={data} />} {page === 'staff' && <StaffView data={data} />} {page === 'settings' && <SettingsView />}{scheduleDialog && <AdminDialog title={scheduleDialog.action === 'suggest' ? 'Suggest a new time' : 'Reschedule appointment'} description="Choose the new local clinic date and time." onClose={() => setScheduleDialog(null)}><form className="modal-form" onSubmit={submitSchedule}><label>New local date and time<input type="datetime-local" value={scheduleDialog.value} onChange={(event) => setScheduleDialog({ ...scheduleDialog, value: event.target.value })} required /></label>{scheduleError && <div className="admin-error" role="alert">{scheduleError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setScheduleDialog(null)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save schedule</button></div></form></AdminDialog>}</>
+}
+
+function AdminDialog({ title, description, children, onClose }: { title: string; description: string; children: React.ReactNode; onClose: () => void }) {
+  const titleId = 'admin-dialog-title'
+  return <div className="admin-modal-backdrop" role="presentation" onMouseDown={onClose}><section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">CLINIC WORKSPACE</p><h2 id={titleId}>{title}</h2><p>{description}</p></div><button type="button" className="admin-button admin-button-quiet modal-close" aria-label="Close dialog" onClick={onClose}><X size={18} /></button></div>{children}</section></div>
 }
 
 function WorkspaceHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: React.ReactNode }) {
@@ -244,19 +281,34 @@ function ActionButtons({ appointment, onAction }: { appointment: AppointmentReco
 
 function AppointmentDetailView({ data, onAction, onRefresh }: { data: Record<string, any>; onAction: (id: string, action: string) => void; onRefresh: (message?: string) => void }) {
   const appointment = data.appointment as AppointmentRecord
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('Cash')
+  const [paymentError, setPaymentError] = useState('')
   if (!appointment) return <div className="workspace-state"><h2>Appointment not found.</h2><Link href="/appointments" className="admin-button admin-button-primary">Back to appointments</Link></div>
   const paymentTotal = appointment.payments?.filter((item) => item.status === 'PAID').reduce((sum, item) => sum + item.amount, 0) || 0
-  async function recordPayment() {
-    const amount = window.prompt('Amount paid in PHP')
-    if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0) return
+  async function recordPayment(event: React.FormEvent) {
+    event.preventDefault()
+    const amount = Number(paymentAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentError('Enter a positive payment amount.')
+      return
+    }
+    if (!appointment.patient?.id || !appointment.branch?.id) {
+      setPaymentError('This appointment is missing its patient or branch link.')
+      return
+    }
+    setPaymentError('')
     try {
-      await requestJson('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointmentId: appointment.id, patientId: appointment.patient?.id, branchId: appointment.branch?.id, amount: Number(amount), paymentMethod: 'Cash', status: 'PAID' }) })
+      await requestJson('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointmentId: appointment.id, patientId: appointment.patient.id, branchId: appointment.branch.id, amount, paymentMethod, status: 'PAID' }) })
+      setPaymentOpen(false)
+      setPaymentAmount('')
       onRefresh('Payment recorded.')
     } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : 'Unable to record payment.')
+      setPaymentError(caught instanceof Error ? caught.message : 'Unable to record payment.')
     }
   }
-  return <div><Link href="/appointments" className="back-link"><ArrowLeft size={15} /> Back to appointments</Link><WorkspaceHeader eyebrow={appointment.publicCode} title={appointment.patient?.fullName || 'Appointment'} description="Review the request, its timeline, and the actions available for this stage." action={<StatusBadge status={appointment.status} />} /><div className="detail-grid"><section className="admin-card detail-main"><div className="detail-top"><div><p className="eyebrow">APPOINTMENT DETAILS</p><h2>{appointment.service?.name || 'Consultation / I’m not sure'}</h2></div><div className="detail-actions">{appointment.status === 'PENDING_REVIEW' && <><button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'confirm')}>Confirm</button><button className="admin-button admin-button-outline" type="button" onClick={() => onAction(appointment.id, 'suggest')}>Suggest new time</button><button className="admin-button admin-button-quiet" type="button" onClick={() => onAction(appointment.id, 'decline')}>Decline</button></>}{appointment.status === 'CONFIRMED' && <><button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'check-in')}>Check in</button><button className="admin-button admin-button-outline" type="button" onClick={() => onAction(appointment.id, 'reschedule')}>Reschedule</button><button className="admin-button admin-button-quiet" type="button" onClick={() => onAction(appointment.id, 'cancel')}>Cancel</button></>}{appointment.status === 'CHECKED_IN' && <button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'start-treatment')}>Start treatment</button>}{appointment.status === 'IN_TREATMENT' && <button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'complete')}>Complete treatment</button>}</div></div><div className="detail-facts"><div><span>Preferred schedule</span><strong>{formatDate(appointment.requestedStartAt)}</strong></div><div><span>Confirmed schedule</span><strong>{formatDate(appointment.confirmedStartAt)}</strong></div><div><span>Branch</span><strong>{appointment.branch?.name || '—'}</strong></div><div><span>Duration</span><strong>{appointment.durationMinutes} minutes</strong></div></div>{(appointment.concernText || appointment.patientMessage) && <div className="detail-message"><p className="eyebrow">PATIENT NOTE</p><p>{appointment.concernText || appointment.patientMessage}</p></div>}<div className="timeline"><p className="eyebrow">STATUS HISTORY</p>{(appointment.statusHistory || []).map((item) => <div className="timeline-row" key={item.id}><span className="timeline-dot" /><div><strong>{statusLabel(item.toStatus)}</strong><small>{formatDate(item.createdAt)}{item.note ? ' · ' + item.note : ''}</small></div></div>)}</div></section><aside className="detail-side"><section className="admin-card"><p className="eyebrow">PATIENT</p><h3>{appointment.patient?.fullName || '—'}</h3><a href={'tel:' + (appointment.patient?.phone || '').replace(/\s/g, '')}>{appointment.patient?.phone || '—'}</a>{appointment.patient?.email && <a href={'mailto:' + appointment.patient.email}>{appointment.patient.email}</a>}<Link className="admin-inline-link" href={'/patients/' + appointment.patient?.id}>Open patient profile <ArrowRight size={15} /></Link></section><section className="admin-card"><p className="eyebrow">PAYMENTS</p><div className="payment-total">{formatMoney(paymentTotal)}</div><span className="muted-copy">Recorded as paid</span><button className="admin-button admin-button-outline admin-button-wide" type="button" onClick={recordPayment}><CreditCard size={16} /> Record payment</button></section></aside></div></div>
+  return <><div><Link href="/appointments" className="back-link"><ArrowLeft size={15} /> Back to appointments</Link><WorkspaceHeader eyebrow={appointment.publicCode} title={appointment.patient?.fullName || 'Appointment'} description="Review the request, its timeline, and the actions available for this stage." action={<StatusBadge status={appointment.status} />} /><div className="detail-grid"><section className="admin-card detail-main"><div className="detail-top"><div><p className="eyebrow">APPOINTMENT DETAILS</p><h2>{appointment.service?.name || 'Consultation / I’m not sure'}</h2></div><div className="detail-actions">{appointment.status === 'PENDING_REVIEW' && <><button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'confirm')}>Confirm</button><button className="admin-button admin-button-outline" type="button" onClick={() => onAction(appointment.id, 'suggest')}>Suggest new time</button><button className="admin-button admin-button-quiet" type="button" onClick={() => onAction(appointment.id, 'decline')}>Decline</button></>}{appointment.status === 'CONFIRMED' && <><button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'check-in')}>Check in</button><button className="admin-button admin-button-outline" type="button" onClick={() => onAction(appointment.id, 'reschedule')}>Reschedule</button><button className="admin-button admin-button-quiet" type="button" onClick={() => onAction(appointment.id, 'cancel')}>Cancel</button></>}{appointment.status === 'CHECKED_IN' && <button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'start-treatment')}>Start treatment</button>}{appointment.status === 'IN_TREATMENT' && <button className="admin-button admin-button-primary" type="button" onClick={() => onAction(appointment.id, 'complete')}>Complete treatment</button>}</div></div><div className="detail-facts"><div><span>Preferred schedule</span><strong>{formatDate(appointment.requestedStartAt)}</strong></div><div><span>Confirmed schedule</span><strong>{formatDate(appointment.confirmedStartAt)}</strong></div><div><span>Branch</span><strong>{appointment.branch?.name || '—'}</strong></div><div><span>Duration</span><strong>{appointment.durationMinutes} minutes</strong></div></div>{(appointment.concernText || appointment.patientMessage) && <div className="detail-message"><p className="eyebrow">PATIENT NOTE</p><p>{appointment.concernText || appointment.patientMessage}</p></div>}<div className="timeline"><p className="eyebrow">STATUS HISTORY</p>{(appointment.statusHistory || []).map((item) => <div className="timeline-row" key={item.id}><span className="timeline-dot" /><div><strong>{statusLabel(item.toStatus)}</strong><small>{formatDate(item.createdAt)}{item.note ? ' · ' + item.note : ''}</small></div></div>)}</div></section><aside className="detail-side"><section className="admin-card"><p className="eyebrow">PATIENT</p><h3>{appointment.patient?.fullName || '—'}</h3><a href={'tel:' + (appointment.patient?.phone || '').replace(/\s/g, '')}>{appointment.patient?.phone || '—'}</a>{appointment.patient?.email && <a href={'mailto:' + appointment.patient.email}>{appointment.patient.email}</a>}<Link className="admin-inline-link" href={'/patients/' + appointment.patient?.id}>Open patient profile <ArrowRight size={15} /></Link></section><section className="admin-card"><p className="eyebrow">PAYMENTS</p><div className="payment-total">{formatMoney(paymentTotal)}</div><span className="muted-copy">Recorded as paid</span><button className="admin-button admin-button-outline admin-button-wide" type="button" onClick={() => { setPaymentError(''); setPaymentOpen(true) }}><CreditCard size={16} /> Record payment</button></section></aside></div></div>{paymentOpen && <AdminDialog title="Record payment" description="Store a basic operational payment record without card details." onClose={() => setPaymentOpen(false)}><form className="modal-form" onSubmit={recordPayment}><label>Amount paid (PHP)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} autoFocus required /></label><label>Payment method<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}><option>Cash</option><option>GCash</option><option>Maya</option><option>Bank Transfer</option><option>Card</option><option>Other</option></select></label>{paymentError && <div className="admin-error" role="alert">{paymentError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setPaymentOpen(false)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save payment</button></div></form></AdminDialog>}</>
 }
 
 function CalendarView({ data }: { data: Record<string, any> }) {
@@ -357,6 +409,8 @@ function InventoryView({ data, onRefresh }: { data: Record<string, any>; onRefre
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('unit')
   const [reorderLevel, setReorderLevel] = useState('0')
+  const [movementDialog, setMovementDialog] = useState<MovementDialogState | null>(null)
+  const [movementError, setMovementError] = useState('')
   async function addItem(event: React.FormEvent) {
     event.preventDefault()
     try {
@@ -368,18 +422,32 @@ function InventoryView({ data, onRefresh }: { data: Record<string, any>; onRefre
       window.alert(caught instanceof Error ? caught.message : 'Unable to create inventory item.')
     }
   }
-  async function movement(itemId: string, branchId: string, type: 'IN' | 'OUT') {
-    const quantity = window.prompt(type === 'IN' ? 'Quantity received' : 'Quantity used')
-    if (!quantity || Number(quantity) <= 0) return
-    const reason = window.prompt('Reason') || (type === 'IN' ? 'Stock received' : 'Stock used')
+  function openMovement(itemId: string, branchId: string, type: 'IN' | 'OUT') {
+    setMovementError('')
+    setMovementDialog({ itemId, branchId, type, quantity: '', reason: type === 'IN' ? 'Stock received' : 'Stock used' })
+  }
+  async function submitMovement(event: React.FormEvent) {
+    event.preventDefault()
+    if (!movementDialog) return
+    const quantity = Number(movementDialog.quantity)
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setMovementError('Enter a positive quantity.')
+      return
+    }
+    if (!movementDialog.reason.trim()) {
+      setMovementError('Enter a reason for this stock movement.')
+      return
+    }
+    setMovementError('')
     try {
-      await requestJson('/api/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId, branchId, type, quantity: Number(quantity), reason }) })
+      await requestJson('/api/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: movementDialog.itemId, branchId: movementDialog.branchId, type: movementDialog.type, quantity, reason: movementDialog.reason.trim() }) })
+      setMovementDialog(null)
       onRefresh('Stock movement recorded.')
     } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : 'Unable to record movement.')
+      setMovementError(caught instanceof Error ? caught.message : 'Unable to record movement.')
     }
   }
-  return <div><WorkspaceHeader eyebrow="INVENTORY" title="Know what is on hand." description="Stock changes are recorded by branch, item, reason, actor, and time." action={<button className="admin-button admin-button-primary" type="button" onClick={() => setShowForm((value) => !value)}><Package size={16} /> Add item</button>} />{showForm && <form className="admin-card inline-form" onSubmit={addItem}><label>Item name<input value={name} onChange={(event) => setName(event.target.value)} required /></label><label>Unit<input value={unit} onChange={(event) => setUnit(event.target.value)} required /></label><label>Reorder level<input type="number" min="0" value={reorderLevel} onChange={(event) => setReorderLevel(event.target.value)} /></label><button className="admin-button admin-button-primary" type="submit">Create item</button></form>}<section className="admin-card table-card"><div className="table-scroll"><table><thead><tr><th>Item</th><th>Valley 1</th><th>BF / Irineville</th><th>Reorder</th><th>Actions</th></tr></thead><tbody>{inventory.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.sku || 'No SKU'} · per {item.unit}</small></td>{BRANCHES.map((branch) => { const stock = item.stock.find((value) => value.branchId === branch.id)?.quantity || 0; return <td key={branch.id}><strong className={stock <= item.reorderLevel ? 'stock-low' : ''}>{stock}</strong><small>{item.unit}</small></td> })}<td>{item.reorderLevel}</td><td><div className="row-actions"><button type="button" className="icon-link" onClick={() => movement(item.id, BRANCHES[0].id, 'IN')} aria-label={'Stock in ' + item.name}>+</button><button type="button" className="icon-link" onClick={() => movement(item.id, BRANCHES[0].id, 'OUT')} aria-label={'Stock out ' + item.name}>−</button></div></td></tr>)}</tbody></table>{!inventory.length && <EmptyAdminState title="Inventory is empty" text="Add an item to start tracking branch stock." />}</div></section></div>
+  return <><div><WorkspaceHeader eyebrow="INVENTORY" title="Know what is on hand." description="Stock changes are recorded by branch, item, reason, actor, and time." action={<button className="admin-button admin-button-primary" type="button" onClick={() => setShowForm((value) => !value)}><Package size={16} /> Add item</button>} />{showForm && <form className="admin-card inline-form" onSubmit={addItem}><label>Item name<input value={name} onChange={(event) => setName(event.target.value)} required /></label><label>Unit<input value={unit} onChange={(event) => setUnit(event.target.value)} required /></label><label>Reorder level<input type="number" min="0" value={reorderLevel} onChange={(event) => setReorderLevel(event.target.value)} /></label><button className="admin-button admin-button-primary" type="submit">Create item</button></form>}<section className="admin-card table-card"><div className="table-scroll"><table><thead><tr><th>Item</th><th>Valley 1</th><th>BF / Irineville</th><th>Reorder</th><th>Actions</th></tr></thead><tbody>{inventory.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.sku || 'No SKU'} · per {item.unit}</small></td>{BRANCHES.map((branch) => { const stock = item.stock.find((value) => value.branchId === branch.id)?.quantity || 0; return <td key={branch.id}><strong className={stock <= item.reorderLevel ? 'stock-low' : ''}>{stock}</strong><small>{item.unit}</small></td> })}<td>{item.reorderLevel}</td><td><div className="row-actions"><button type="button" className="icon-link" onClick={() => openMovement(item.id, BRANCHES[0].id, 'IN')} aria-label={'Stock in ' + item.name}>+</button><button type="button" className="icon-link" onClick={() => openMovement(item.id, BRANCHES[0].id, 'OUT')} aria-label={'Stock out ' + item.name}>−</button></div></td></tr>)}</tbody></table>{!inventory.length && <EmptyAdminState title="Inventory is empty" text="Add an item to start tracking branch stock." />}</div></section></div>{movementDialog && <AdminDialog title={movementDialog.type === 'IN' ? 'Receive stock' : 'Record stock use'} description="Record the quantity and reason for this branch movement." onClose={() => setMovementDialog(null)}><form className="modal-form" onSubmit={submitMovement}><label>Quantity<input type="number" min="0.01" step="0.01" value={movementDialog.quantity} onChange={(event) => setMovementDialog({ ...movementDialog, quantity: event.target.value })} autoFocus required /></label><label>Reason<input value={movementDialog.reason} onChange={(event) => setMovementDialog({ ...movementDialog, reason: event.target.value })} required /></label>{movementError && <div className="admin-error" role="alert">{movementError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setMovementDialog(null)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save movement</button></div></form></AdminDialog>}</>
 }
 
 function ReportsView({ data }: { data: Record<string, any> }) {
