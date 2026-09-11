@@ -224,6 +224,19 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
 .role-grid { display: grid; gap: 0.8rem; grid-template-columns: repeat(3, 1fr); margin-top: 1.2rem; }
 .role-card { background: var(--white); border: 1px solid var(--border); padding: 1rem; }
 .role-card span { color: var(--gold); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.email-settings-card { background: linear-gradient(135deg, #fff 0%, #fbfcfd 72%, #f7f1e6 100%); }
+.email-settings-card > .card-heading { align-items: start; }
+.email-settings-card > .card-heading p:last-child { color: var(--muted); font-size: 0.75rem; line-height: 1.6; max-width: 600px; }
+.email-provider-status { align-items: center; background: rgba(255,255,255,0.72); border: 1px solid var(--border); display: flex; gap: 0.75rem; margin: 1rem 0; padding: 0.85rem 1rem; }
+.email-provider-status > div { display: grid; gap: 0.2rem; }
+.email-provider-status strong { color: var(--navy); font-size: 0.78rem; }
+.email-provider-status small { color: var(--muted); font-size: 0.65rem; }
+.status-dot { background: #a7b0b8; border-radius: 50%; box-shadow: 0 0 0 4px rgba(167,176,184,0.15); flex: 0 0 auto; height: 9px; width: 9px; }
+.status-dot-green { background: #5d9b79; box-shadow: 0 0 0 4px rgba(93,155,121,0.15); }
+.email-test-form { align-items: end; display: flex; gap: 0.7rem; }
+.email-test-form label { color: var(--navy); display: grid; flex: 1; font-size: 0.68rem; font-weight: 700; gap: 0.3rem; }
+.email-test-form input { background: var(--white); border: 1px solid var(--border); color: var(--navy); min-height: 42px; padding: 0.65rem 0.75rem; }
+.email-settings-card code { background: rgba(18,59,104,0.06); color: var(--navy); padding: 0.12rem 0.25rem; }
 .role-card p { color: var(--muted); font-size: 0.72rem; margin: 0.55rem 0 0; }
 .staff-list { border-top: 1px solid var(--border); }
 .staff-row { align-items: center; border-bottom: 1px solid var(--border); display: flex; gap: 1rem; justify-content: space-between; padding: 0.85rem 0; }
@@ -366,6 +379,8 @@ td small { color: var(--muted); font-size: 0.65rem; margin-top: 0.12rem; }
   .calendar-event span { font-size: 0.54rem; }
   .report-filters { align-items: stretch; flex-direction: column; }
   .report-filters label, .report-filters select, .report-filters input { width: 100%; }
+  .email-test-form { align-items: stretch; flex-direction: column; }
+  .email-test-form .admin-button { width: 100%; }
   .workspace-header { gap: 0.9rem; margin-bottom: 1.45rem; }
   .workspace-header h1 { font-size: clamp(2.2rem, 11vw, 3rem); }
   .workspace-header p:last-child { font-size: 0.8rem; }

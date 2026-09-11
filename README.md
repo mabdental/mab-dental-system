@@ -138,6 +138,23 @@ Keep the server key,
 deploy local demo authentication or the file-backed store as a production data
 source.
 
+### Brevo transactional email
+
+Appointment request and status notifications use Brevo's transactional email
+API. In each Vercel project, add these server-only variables for Production and
+Preview:
+
+- `BREVO_API_KEY`: the Brevo API key; never commit or expose it to the browser.
+- `BREVO_SENDER_EMAIL`: a sender verified in Brevo (the current account sender is
+  `mab.dental.clnc@gmail.com`).
+- `BREVO_SENDER_NAME`: normally `M.A.B. Dental Clinic`.
+- `BREVO_REPLY_TO_EMAIL`: the clinic inbox used for replies.
+- `MAB_PUBLIC_SITE_URL`: `https://mabdental.vercel.app`.
+
+The admin Settings page includes a protected synthetic delivery test. Addresses
+ending in `.invalid` are intentionally skipped, and email delivery failures do
+not roll back a successfully saved appointment.
+
 The previous Netlify URLs are legacy deployments. Vercel is the current
 deployment source of truth.
 
@@ -172,6 +189,6 @@ Source code is licensed under the MIT License in LICENSE. Clinic trademarks, bra
 
 The current repository is a deployed, Supabase-backed implementation. Before
 broad public launch, complete the full role/security/accessibility QA matrix,
-configure any custom domain and transactional notifications, replace cropped
-reference imagery with original clinic assets, and confirm the clinic's data
-retention and staff-access policies.
+configure any custom domain, replace cropped reference imagery with original
+clinic assets, and confirm the clinic's data retention and staff-access
+policies.

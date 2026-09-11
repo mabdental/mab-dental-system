@@ -22,6 +22,9 @@ import {
   AuditLog,
   normalizePhone,
 } from '@mab/shared'
+import { sendAppointmentRequestEmail, sendAppointmentStatusEmail, sendBrevoTestEmail, brevoStatus } from './email'
+
+export { sendBrevoTestEmail, brevoStatus } from './email'
 
 export type LocalDb = {
   branches: Branch[]
@@ -293,6 +296,16 @@ export async function createPublicAppointment(input: AppointmentInput) {
     concern_text: input.concernText?.trim() || null,
   }).select('public_code,status').single()
   if (appointment.error) throw new Error('Unable to submit the appointment request.')
+  await sendAppointmentRequestEmail({
+    recipient: input.email,
+    patientName: input.fullName,
+    publicCode: stringValue(appointment.data.public_code),
+    branchName: branch.name,
+    branchSlug: branch.slug,
+    serviceName: service?.name || BUSINESS.consultation,
+    serviceSlug: service?.slug,
+    requestedStartAt: input.requestedStartAt,
+  })
   return { appointment: appointment.data, patient }
 }
 
@@ -836,7 +849,22 @@ export async function updateAppointment(id: string, action: string, payload: { s
   const audit = await supabase.from('audit_logs').insert({ action: 'APPOINTMENT_' + action.toUpperCase(), entity_type: 'appointment', entity_id: id, metadata: { from, to, note: payload.note } })
   if (audit.error) throw new Error('Appointment updated, but its audit entry could not be recorded.')
   if (to === 'COMPLETED') await supabase.from('patients').update({ last_visit_at: updatedAt, updated_at: updatedAt }).eq('id', current.patientId)
-  return getAppointment(id)
+  const result = await getAppointment(id)
+  if (result && ['CONFIRMED', 'RESCHEDULE_PROPOSED', 'CANCELLED', 'DECLINED', 'COMPLETED', 'NO_SHOW'].includes(to)) {
+    await sendAppointmentStatusEmail({
+      recipient: result.patient?.email,
+      patientName: result.patient?.fullName || 'Patient',
+      publicCode: result.publicCode,
+      branchName: result.branch?.name,
+      branchSlug: result.branch?.slug,
+      serviceName: result.service?.name || BUSINESS.consultation,
+      serviceSlug: result.service?.slug,
+      requestedStartAt: result.requestedStartAt,
+      confirmedStartAt: result.confirmedStartAt,
+      status: to,
+    })
+  }
+  return result
 }
 
 export async function listPatients(query?: string) {

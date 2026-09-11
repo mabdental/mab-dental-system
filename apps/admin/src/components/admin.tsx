@@ -20,9 +20,11 @@ import {
   FileText,
   HeartPulse,
   LayoutDashboard,
+  Mail,
   Menu,
   Package,
   Search,
+  Send,
   Settings,
   ShieldCheck,
   Stethoscope,
@@ -503,7 +505,27 @@ function StaffView({ data }: { data: Record<string, any> }) {
 }
 
 function SettingsView() {
-  return <div><WorkspaceHeader eyebrow="SETTINGS" title="Keep the operating rules visible." description="Business facts stay centralized and sensitive service credentials never belong in database settings." /><section className="admin-card settings-card"><div className="settings-row"><div><p className="eyebrow">OFFICIAL DISPLAY NAME</p><h2>{BUSINESS.name}</h2><span>Locked to the verified clinic name.</span></div><span className="locked-tag"><ShieldCheck size={14} /> Locked</span></div><div className="settings-grid"><div><span>Timezone</span><strong>{BUSINESS.timezone}</strong></div><div><span>Consultation</span><strong>{BUSINESS.consultation}</strong></div><div><span>Monday–Saturday</span><strong>{BUSINESS.hours.weekday}</strong></div><div><span>Sunday</span><strong>{BUSINESS.hours.sunday}</strong></div><div><span>Data mode</span><strong>Supabase in production / local fallback in development</strong></div><div><span>Admin sign-up</span><strong>Disabled</strong></div></div></section><section className="admin-card"><div className="card-heading"><div><p className="eyebrow">PRODUCTION SAFEGUARDS</p><h2>Keep the operating boundary clear.</h2></div><ShieldCheck size={19} /></div><ul className="checklist"><li><Check size={16} /> Supabase schema, RLS policies, and Realtime publication are applied.</li><li><Check size={16} /> Server keys remain outside the browser bundle.</li><li><Check size={16} /> Bootstrap access is configured for the initial handoff.</li><li><Check size={16} /> Rotate the temporary bootstrap password after handoff.</li><li><Check size={16} /> Create additional staff profiles through the authorized staff process.</li></ul></section></div>
+  const [brevo, setBrevo] = useState<{ configured: boolean; senderEmail: string | null; senderName: string } | null>(null)
+  const [recipient, setRecipient] = useState('')
+  const [emailState, setEmailState] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [sending, setSending] = useState(false)
+  useEffect(() => { requestJson<{ configured: boolean; senderEmail: string | null; senderName: string }>('/api/email/test').then(setBrevo).catch(() => setBrevo(null)) }, [])
+  async function sendTest(event: React.FormEvent) {
+    event.preventDefault()
+    setEmailState('')
+    setEmailError('')
+    setSending(true)
+    try {
+      await requestJson('/api/email/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient }) })
+      setEmailState('Test email accepted by Brevo. Check the recipient inbox and Brevo logs.')
+    } catch (caught) {
+      setEmailError(caught instanceof Error ? caught.message : 'Unable to send the Brevo test.')
+    } finally {
+      setSending(false)
+    }
+  }
+  return <div><WorkspaceHeader eyebrow="SETTINGS" title="Keep the operating rules visible." description="Business facts stay centralized and sensitive service credentials never belong in database settings." /><section className="admin-card settings-card"><div className="settings-row"><div><p className="eyebrow">OFFICIAL DISPLAY NAME</p><h2>{BUSINESS.name}</h2><span>Locked to the verified clinic name.</span></div><span className="locked-tag"><ShieldCheck size={14} /> Locked</span></div><div className="settings-grid"><div><span>Timezone</span><strong>{BUSINESS.timezone}</strong></div><div><span>Consultation</span><strong>{BUSINESS.consultation}</strong></div><div><span>Monday–Saturday</span><strong>{BUSINESS.hours.weekday}</strong></div><div><span>Sunday</span><strong>{BUSINESS.hours.sunday}</strong></div><div><span>Data mode</span><strong>Supabase in production / local fallback in development</strong></div><div><span>Admin sign-up</span><strong>Disabled</strong></div></div></section><section className="admin-card email-settings-card"><div className="card-heading"><div><p className="eyebrow">TRANSACTIONAL EMAIL</p><h2>Brevo delivery</h2><p>Premium appointment notifications use Brevo’s server-side transactional API. This test uses synthetic content and does not create or modify a patient record.</p></div><Mail size={21} /></div><div className="email-provider-status"><span className={'status-dot' + (brevo?.configured ? ' status-dot-green' : '')} /><div><strong>{brevo?.configured ? 'Configured' : 'Waiting for deployment configuration'}</strong><small>{brevo?.senderEmail ? `Sender: ${brevo.senderName} <${brevo.senderEmail}>` : 'Add the Brevo API key and verified sender in the deployment environment.'}</small></div></div><form className="email-test-form" onSubmit={sendTest}><label>Test recipient<input type="email" value={recipient} onChange={(event) => setRecipient(event.target.value)} placeholder="your-inbox@example.com" required /></label><button className="admin-button admin-button-primary" type="submit" disabled={sending || !brevo?.configured}>{sending ? 'Sending…' : 'Send test email'} <Send size={16} /></button></form>{emailState && <div className="admin-success" role="status"><Check size={16} /> {emailState}</div>}{emailError && <div className="admin-error" role="alert">{emailError}</div>}<p className="muted-copy">Never use a patient’s real details for delivery testing. Addresses ending in <code>.invalid</code> are intentionally skipped.</p></section><section className="admin-card"><div className="card-heading"><div><p className="eyebrow">PRODUCTION SAFEGUARDS</p><h2>Keep the operating boundary clear.</h2></div><ShieldCheck size={19} /></div><ul className="checklist"><li><Check size={16} /> Supabase schema, RLS policies, and Realtime publication are applied.</li><li><Check size={16} /> Server keys remain outside the browser bundle.</li><li><Check size={16} /> Bootstrap access is configured for the initial handoff.</li><li><Check size={16} /> Rotate the temporary bootstrap password after handoff.</li><li><Check size={16} /> Create additional staff profiles through the authorized staff process.</li></ul></section></div>
 }
 
 function StatusBadge({ status }: { status: string }) {
