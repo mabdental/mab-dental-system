@@ -351,7 +351,8 @@ export function updateLocalAppointment(id: string, action: string, payload: { st
       DECLINED: [],
       NO_SHOW: [],
     }
-    if (!allowed[from].includes(to)) throw new Error('Cannot move ' + from + ' to ' + to + '.')
+    const isConfirmedReschedule = action === 'reschedule' && from === 'CONFIRMED' && to === 'CONFIRMED'
+    if (!allowed[from].includes(to) && !isConfirmedReschedule) throw new Error('Cannot move ' + from + ' to ' + to + '.')
     const startAt = payload.startAt || appointment.confirmedStartAt || appointment.requestedStartAt
     if (to === 'CONFIRMED' || to === 'RESCHEDULE_PROPOSED') {
       validateAppointmentTime(startAt, appointment.durationMinutes)
@@ -805,7 +806,8 @@ export async function updateAppointment(id: string, action: string, payload: { s
     DECLINED: [],
     NO_SHOW: [],
   }
-  if (!allowed[from].includes(to)) throw new Error('Cannot move ' + from + ' to ' + to + '.')
+  const isConfirmedReschedule = action === 'reschedule' && from === 'CONFIRMED' && to === 'CONFIRMED'
+  if (!allowed[from].includes(to) && !isConfirmedReschedule) throw new Error('Cannot move ' + from + ' to ' + to + '.')
   const startAt = payload.startAt || current.confirmedStartAt || current.requestedStartAt
   if (to === 'CONFIRMED' || to === 'RESCHEDULE_PROPOSED') {
     validateAppointmentTime(startAt, current.durationMinutes)
