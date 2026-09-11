@@ -5,6 +5,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+visual-qa/
 .env
 .env.local
 .env.*.local

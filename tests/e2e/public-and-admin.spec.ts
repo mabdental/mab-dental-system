@@ -62,8 +62,13 @@ test('public site renders usable desktop and mobile navigation', async ({ page }
   await expect(page.getByRole('heading', { name: 'Dental care, thoughtfully done.' })).toBeVisible()
   const width = page.viewportSize()?.width || 1280
   if (width < 600) {
+    await expect(page.getByRole('link', { name: /Book a visit/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Find a branch/ })).toBeVisible()
     await page.getByRole('button', { name: 'Open menu' }).click()
     await expect(page.getByRole('link', { name: 'Our Clinic' }).last()).toBeVisible()
+    await page.goto('/book?branch=valley-1')
+    await expect(page.getByText('Step 01 of 05')).toBeVisible()
+    await expect(page.locator('.mobile-action-bar-booking')).toBeHidden()
   } else {
     await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Locations' }).first()).toBeVisible()
@@ -94,4 +99,24 @@ test('admin can toggle password visibility, collapse navigation, and export filt
   await page.getByRole('button', { name: 'Export Excel' }).click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/^mab-dental-report-\d{4}-\d{2}-\d{2}\.xls$/)
+})
+
+test('admin mobile navigation keeps core work one tap away', async ({ page }) => {
+  test.skip((page.viewportSize()?.width || 1280) >= 600, 'The mobile navigation is verified in the phone-sized project.')
+  await page.goto('http://localhost:3001/login')
+  const email = page.locator('input[type="email"]')
+  const password = page.locator('input[type="password"]')
+  await email.click()
+  await email.pressSequentially('local-staff@example.com')
+  await password.click()
+  await password.pressSequentially('local-only')
+  await expect(email).toHaveValue('local-staff@example.com')
+  await expect(password).toHaveValue('local-only')
+  await page.getByRole('button', { name: /Sign in/ }).click()
+  await expect(page).toHaveURL(/dashboard/)
+  const mobileNav = page.getByRole('navigation', { name: 'Mobile primary navigation' })
+  await expect(mobileNav).toBeVisible()
+  for (const label of ['Dashboard', 'Appointments', 'Calendar', 'Patients', 'More']) await expect(mobileNav.getByRole(label === 'More' ? 'button' : 'link', { name: label })).toBeVisible()
+  await mobileNav.getByRole('button', { name: 'More' }).click()
+  await expect(page.getByRole('link', { name: 'Services' })).toBeVisible()
 })

@@ -91,7 +91,7 @@ export function SiteHeader() {
         </div>
       )}
     </header>
-    <div className="mobile-action-bar" aria-label="Quick actions">
+    <div className={'mobile-action-bar' + (pathname === '/book' ? ' mobile-action-bar-booking' : '')} aria-label="Quick actions">
       <a href={SOCIAL_LINKS.messenger} {...ExternalLinkProps()}><MessageCircle size={17} /> Message</a>
       <Link href="/book"><CalendarDays size={17} /> Book</Link>
     </div>
