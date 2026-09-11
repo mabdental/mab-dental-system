@@ -104,42 +104,42 @@ The migration creates operational tables, enums, indexes, helper authorization f
 
 Required environment variables are listed in .env.example. Never commit .env files, service-role keys, bootstrap passwords, database passwords, or patient data.
 
-## Netlify deployment
+## Vercel deployment
 
-Deploy the two apps as separate public Netlify projects from the same public GitHub repository, `mabdental/mab-dental-system`.
+Deploy the two apps as separate Vercel projects from the same public GitHub repository, `mabdental/mab-dental-system`. Both projects are connected to the `mabdental` Vercel workspace and deploy from `main`.
 
 The live projects are:
 
-- Public clinic site: https://mabdentalclinic.netlify.app
-- Admin workspace: https://mabclinicadmin.netlify.app
+- Public clinic site: https://mab-dental-system-website.vercel.app
+- Admin workspace: https://mab-dental-system-admin.vercel.app
 
-Both projects use the repository root as their base directory. Netlify detects the
-workspace and runs the app-specific build command below:
+Each project uses its app directory as the Vercel Root Directory. This keeps the
+public and admin deployments independently deployable while sharing the workspace
+packages.
 
 ### Public project
 
-- Project name: `mabdentalclinic`
-- Base directory: repository root
+- Project name: `mab-dental-system-website`
+- Root directory: `apps/website`
 - Framework: Next.js
-- Build command: `npm --workspace @mab/website run build`
-- Publish directory: `apps/website/.next`
 
 ### Admin project
 
-- Project name: `mabclinicadmin`
-- Base directory: repository root
+- Project name: `mab-dental-system-admin`
+- Root directory: `apps/admin`
 - Framework: Next.js
-- Build command: `npm --workspace @mab/admin run build`
-- Publish directory: `apps/admin/.next`
 - Keep the admin deployment noindex/nofollow.
 
-Set the shared Supabase and public-link variables in each Netlify project's
-production environment. The server accepts Supabase's current
+Set the shared Supabase variables in each Vercel project's Production and Preview
+environments. The server accepts Supabase's current
 `SUPABASE_SECRET_KEY` name (or the legacy `SUPABASE_SERVICE_ROLE_KEY` name).
 Keep the server key,
 `MAB_BOOTSTRAP_ADMIN_PASSWORD`, and `MAB_SESSION_SECRET` server-only. Do not
 deploy local demo authentication or the file-backed store as a production data
 source.
+
+The previous Netlify URLs are legacy deployments. Vercel is the current
+deployment source of truth.
 
 ## Testing
 
@@ -170,4 +170,8 @@ Source code is licensed under the MIT License in LICENSE. Clinic trademarks, bra
 
 ## Production limitations
 
-The current repository is a validated local implementation and deployment-ready foundation. Before public launch, complete the production Supabase adapter for all admin reads/mutations, use Supabase Auth with true staff-profile RBAC, configure Realtime authorization, rotate bootstrap credentials, replace cropped reference imagery with original clinic assets, and run the full role/security/accessibility QA matrix.
+The current repository is a deployed, Supabase-backed implementation. Before
+broad public launch, complete the full role/security/accessibility QA matrix,
+configure any custom domain and transactional notifications, replace cropped
+reference imagery with original clinic assets, and confirm the clinic's data
+retention and staff-access policies.
