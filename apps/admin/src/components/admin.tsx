@@ -171,6 +171,7 @@ function MobileAdminNav({ pathname, onMore }: { pathname: string; onMore: () => 
 export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: string }) {
   const [data, setData] = useState<Record<string, any> | null>(null)
   const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [scheduleDialog, setScheduleDialog] = useState<ScheduleDialogState | null>(null)
@@ -202,6 +203,7 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
     return () => window.clearInterval(timer)
   }, [page, reload])
   function refresh(message?: string) {
+    setActionError('')
     if (message) {
       setNotice(message)
       window.setTimeout(() => setNotice(''), 3500)
@@ -215,11 +217,12 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
       return
     }
     if (['cancel', 'decline', 'no-show'].includes(action) && !window.confirm('Are you sure you want to ' + action.replace('-', ' ') + ' this appointment?')) return
+    setActionError('')
     try {
       await requestJson('/api/appointments/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
       refresh('Appointment updated.')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to update appointment.')
+      setActionError(caught instanceof Error ? caught.message : 'Unable to update appointment.')
     }
   }
   async function submitSchedule(event: React.FormEvent) {
@@ -241,7 +244,7 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
   }
   if (error) return <div className="workspace-state"><div className="state-icon"><Database size={24} /></div><h2>Could not load this view.</h2><p>{error}</p><button className="admin-button admin-button-primary" type="button" onClick={() => { setError(''); refresh() }}>Try again <ArrowRight size={16} /></button></div>
   if (!data) return <div className="workspace-state"><div className="spinner" /><p>Loading workspace…</p></div>
-  return <>{notice && <div className="admin-toast" role="status"><Check size={16} /> {notice}</div>}{page === 'dashboard' && <DashboardView data={data} onAction={appointmentAction} />} {page === 'appointments' && <AppointmentsView data={data} onAction={appointmentAction} />} {page === 'appointment-detail' && <AppointmentDetailView data={data} onAction={appointmentAction} onRefresh={refresh} />} {page === 'calendar' && <CalendarView data={data} />} {page === 'patients' && <PatientsView data={data} />} {page === 'patient-detail' && <PatientDetailView data={data} onAction={appointmentAction} />} {page === 'services' && <ServicesView data={data} onRefresh={refresh} />} {page === 'branches' && <BranchesView data={data} onRefresh={refresh} />} {page === 'billing' && <BillingView data={data} />} {page === 'inventory' && <InventoryView data={data} onRefresh={refresh} />} {page === 'reports' && <ReportsView data={data} />} {page === 'staff' && <StaffView data={data} />} {page === 'settings' && <SettingsView />}{scheduleDialog && <AdminDialog title={scheduleDialog.action === 'suggest' ? 'Suggest a new time' : 'Reschedule appointment'} description="Choose the new local clinic date and time." onClose={() => setScheduleDialog(null)}><form className="modal-form" onSubmit={submitSchedule}><label>New local date and time<input type="datetime-local" value={scheduleDialog.value} onChange={(event) => setScheduleDialog({ ...scheduleDialog, value: event.target.value })} required /></label>{scheduleError && <div className="admin-error" role="alert">{scheduleError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setScheduleDialog(null)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save schedule</button></div></form></AdminDialog>}</>
+  return <>{notice && <div className="admin-toast" role="status"><Check size={16} /> {notice}</div>}{actionError && <div className="admin-action-error" role="alert"><X size={16} /> <span>{actionError}</span><button type="button" aria-label="Dismiss error" onClick={() => setActionError('')}><X size={14} /></button></div>}{page === 'dashboard' && <DashboardView data={data} onAction={appointmentAction} />} {page === 'appointments' && <AppointmentsView data={data} onAction={appointmentAction} />} {page === 'appointment-detail' && <AppointmentDetailView data={data} onAction={appointmentAction} onRefresh={refresh} />} {page === 'calendar' && <CalendarView data={data} />} {page === 'patients' && <PatientsView data={data} />} {page === 'patient-detail' && <PatientDetailView data={data} onAction={appointmentAction} />} {page === 'services' && <ServicesView data={data} onRefresh={refresh} />} {page === 'branches' && <BranchesView data={data} onRefresh={refresh} />} {page === 'billing' && <BillingView data={data} />} {page === 'inventory' && <InventoryView data={data} onRefresh={refresh} />} {page === 'reports' && <ReportsView data={data} />} {page === 'staff' && <StaffView data={data} />} {page === 'settings' && <SettingsView />}{scheduleDialog && <AdminDialog title={scheduleDialog.action === 'suggest' ? 'Suggest a new time' : 'Reschedule appointment'} description="Choose the new local clinic date and time." onClose={() => setScheduleDialog(null)}><form className="modal-form" onSubmit={submitSchedule}><label>New local date and time<input type="datetime-local" value={scheduleDialog.value} onChange={(event) => setScheduleDialog({ ...scheduleDialog, value: event.target.value })} required /></label>{scheduleError && <div className="admin-error" role="alert">{scheduleError}</div>}<div className="modal-actions"><button type="button" className="admin-button admin-button-quiet" onClick={() => setScheduleDialog(null)}>Cancel</button><button type="submit" className="admin-button admin-button-primary">Save schedule</button></div></form></AdminDialog>}</>
 }
 
 function AdminDialog({ title, description, children, onClose }: { title: string; description: string; children: React.ReactNode; onClose: () => void }) {
