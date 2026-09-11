@@ -170,6 +170,11 @@ export function AdminWorkspace({ page, recordId }: { page: PageKind; recordId?: 
     }
   }, [page, recordId, reloadKey])
   useEffect(() => { void reload() }, [reload])
+  useEffect(() => {
+    if (!['dashboard', 'appointments', 'calendar'].includes(page)) return
+    const timer = window.setInterval(() => { void reload() }, 15000)
+    return () => window.clearInterval(timer)
+  }, [page, reload])
   function refresh(message?: string) {
     if (message) {
       setNotice(message)

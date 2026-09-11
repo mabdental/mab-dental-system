@@ -22,7 +22,12 @@ Open the public site at http://localhost:3000 and the admin workspace at http://
 
 The local app uses a disposable file-backed data store at data/local-db.json. It lets the public and admin apps exercise the complete request-to-completion workflow without requiring cloud credentials. This store is development-only and is ignored by Git.
 
-The admin login is closed to public signup. When no bootstrap credentials are set and the app is running in development, non-empty values are accepted in a clearly local-only demo mode. Before any deployment, set a real bootstrap email/password and a strong MAB_SESSION_SECRET.
+The admin login is closed to public signup. With the Supabase variables configured,
+the deployed app authenticates through Supabase Auth and resolves the active
+`staff_profiles` role. The bootstrap email/password remains available as a
+controlled recovery path; keep it temporary and rotate it after handoff. In
+development, the local-only fallback accepts non-empty values only when no
+bootstrap credentials are configured.
 
 ## Commands
 

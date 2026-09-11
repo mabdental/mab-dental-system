@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 function futureDate() {
   const date = new Date()
   date.setDate(date.getDate() + 2)
+  while (date.getDay() === 0) date.setDate(date.getDate() + 1)
   return date.toISOString().slice(0, 10)
 }
 

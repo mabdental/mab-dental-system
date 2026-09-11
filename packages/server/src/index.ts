@@ -132,6 +132,10 @@ function supabaseSecretKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY
 }
 
+function supabasePublishableKey() {
+  return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY
+}
+
 function now() {
   return new Date().toISOString()
 }
@@ -532,6 +536,23 @@ export function localLoginAllowed(email: string, password: string) {
   const configuredPassword = process.env.MAB_BOOTSTRAP_ADMIN_PASSWORD
   if (configuredEmail || configuredPassword) return email === configuredEmail && password === configuredPassword
   return process.env.NODE_ENV !== 'production' && Boolean(email.trim() && password.trim())
+}
+
+export async function authenticateAdmin(email: string, password: string) {
+  const url = supabaseUrl()
+  const publishableKey = supabasePublishableKey()
+  if (isSupabaseConfigured() && url && publishableKey) {
+    const authClient = createClient(url, publishableKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const authResult = await authClient.auth.signInWithPassword({ email, password })
+    if (!authResult.error && authResult.data.user) {
+      const supabase = getSupabaseServiceClient()
+      if (supabase) {
+        const profile = await supabase.from('staff_profiles').select('email, role, is_active').eq('id', authResult.data.user.id).maybeSingle()
+        if (!profile.error && profile.data?.is_active) return { email: stringValue(profile.data.email, email), role: stringValue(profile.data.role, 'SUPER_ADMIN') as Role }
+      }
+    }
+  }
+  return localLoginAllowed(email, password) ? { email, role: 'SUPER_ADMIN' as Role } : null
 }
 
 type SupabaseRow = Record<string, unknown>
