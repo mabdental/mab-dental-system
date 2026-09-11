@@ -129,7 +129,9 @@ workspace and runs the app-specific build command below:
 - Keep the admin deployment noindex/nofollow.
 
 Set the shared Supabase and public-link variables in each Netlify project's
-production environment. Keep `SUPABASE_SERVICE_ROLE_KEY`,
+production environment. The server accepts Supabase's current
+`SUPABASE_SECRET_KEY` name (or the legacy `SUPABASE_SERVICE_ROLE_KEY` name).
+Keep the server key,
 `MAB_BOOTSTRAP_ADMIN_PASSWORD`, and `MAB_SESSION_SECRET` server-only. Do not
 deploy local demo authentication or the file-backed store as a production data
 source.
