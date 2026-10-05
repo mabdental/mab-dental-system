@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "@mab/shared": "1.0.0",
-    "@supabase/supabase-js": "2.116.0"
+    "@supabase/supabase-js": "2.117.2"
   }
 }
